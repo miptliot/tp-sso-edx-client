@@ -1,2 +1,2 @@
 # npoed-sso-edx-client
-Clien for edX SSO provider
+Client for edX SSO provider
