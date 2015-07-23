@@ -9,7 +9,7 @@ with open('requirements.txt', 'r') as f:
 
 
 setup(
-    name='edx-sso-npoed',
+    name='npoed-sso-edx-client',
     version='1.0',
     description='Client OAuth2 from edX installations',
     author='edX',
