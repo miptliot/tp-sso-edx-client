@@ -1,7 +1,7 @@
 import string  # pylint: disable-msg=deprecated-module
 import json
 
-from django.http import HttpResponseBadRequest
+from django.http import HttpResponseBadRequest, HttpResponse
 from django.shortcuts import redirect
 from django.utils.translation import ugettext as _
 from social.exceptions import AuthException
