@@ -1,9 +1,12 @@
 import logging
 
 from django.conf import settings
+
+from social.utils import handle_http_errors
 from social.backends.oauth import BaseOAuth2
 
 log = logging.getLogger(__name__)
+# log.info(' '.join(["+" * 40]))
 
 
 SOCIAL_AUTH_PIPELINE = (
@@ -34,18 +37,19 @@ class NpoedBackend(BaseOAuth2):
     REDIRECT_STATE = False
     ACCESS_TOKEN_METHOD = 'POST'
 
+    @handle_http_errors
+    def auth_complete(self, *args, **kwargs):
+        """Completes loging process, must return user instance"""
+        self.strategy.session.setdefault('sso_npoed-oauth2_state', self.data.get('state'))
+        self.strategy.session.setdefault('next', '/dashboard')
+        return super(NpoedBackend, self).auth_complete(*args, **kwargs)
+
     def pipeline(self, pipeline, pipeline_index=0, *args, **kwargs):
-
+        self.strategy.session.setdefault('auth_entry', 'register')
         pipeline = SOCIAL_AUTH_PIPELINE
-
-        out = self.run_pipeline(pipeline, pipeline_index, *args, **kwargs)
-        if not isinstance(out, dict):
-            return out
-        user = out.get('user')
-        if user:
-            user.social_user = out.get('social')
-            user.is_new = out.get('is_new')
-        return user
+        return super(NpoedBackend, self).pipeline(
+            pipeline, pipeline_index=pipeline_index, *args, **kwargs
+        )
 
     def get_user_details(self, response):
         """ Return user details from MIPT account. """
