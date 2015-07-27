@@ -1,5 +1,5 @@
 from django.core.urlresolvers import reverse
-from django.contrib.auth import REDIRECT_FIELD_NAME
+from django.contrib.auth import REDIRECT_FIELD_NAME, logout
 from social.apps.django_app.views import auth, NAMESPACE
 
 
@@ -15,9 +15,12 @@ class SeamlessAuthorization(object):
         is_continue = (continue_url in current_url)
 
         if auth_cookie and not is_continue and not request.user.is_authenticated():
-              query_dict = request.GET.copy()
-              query_dict[REDIRECT_FIELD_NAME] = current_url
-              query_dict['auth_entry'] = 'login'
-              request.GET = query_dict
-              return auth(request, self.backend)
+            query_dict = request.GET.copy()
+            query_dict[REDIRECT_FIELD_NAME] = current_url
+            query_dict['auth_entry'] = 'login'
+            request.GET = query_dict
+            return auth(request, self.backend)
+        elif not auth_cookie and request.user.is_authenticated():
+            logout(request)
+
         return None

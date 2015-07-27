@@ -15,9 +15,9 @@ def logout(request, next_page=None,
                                      request.GET.get(redirect_field_name))
 
     if next_page:
-        next_page = '%s%s' % (request.get_host(), next_page)
+        next_page = request.build_absolute_uri(next_page)
     else:
-        next_page = request.get_host()
+        next_page = request.build_absolute_uri('/')
 
     return redirect('%s?%s=%s' % (settings.SOCIAL_AUTH_LOGOUT_URL,
                                       redirect_field_name, next_page))
