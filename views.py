@@ -3,8 +3,8 @@ from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.shortcuts import redirect
 
 
-def logout(request, *args, next_page=None,
-           redirect_field_name=REDIRECT_FIELD_NAME, **kwargs):
+def logout(request, next_page=None,
+           redirect_field_name=REDIRECT_FIELD_NAME, *args, **kwargs):
 
     if next_page is not None:
         next_page = resolve_url(next_page)
@@ -17,7 +17,7 @@ def logout(request, *args, next_page=None,
     if next_page:
         next_page = '%s%s' % (request.get_host(), next_page)
     else:
-        next_page = request.get_host(), next_page)
+        next_page = request.get_host()
 
     return redirect('%s?%s=%s' % (settings.SOCIAL_AUTH_LOGOUT_URL,
                                       redirect_field_name, next_page))
