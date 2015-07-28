@@ -1,13 +1,10 @@
 from django.conf import settings
 from django.contrib.auth import REDIRECT_FIELD_NAME
-from django.shortcuts import redirect, resolve_url
+from django.shortcuts import redirect
 
 
 def logout(request, next_page=None,
            redirect_field_name=REDIRECT_FIELD_NAME, *args, **kwargs):
-
-    if next_page is not None:
-        next_page = resolve_url(next_page)
 
     if (redirect_field_name in request.POST or
             redirect_field_name in request.GET):
