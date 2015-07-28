@@ -13,9 +13,11 @@ class SeamlessAuthorization(object):
 
     def process_request(self, request):
         current_url = request.get_full_path()
-        r = re.compile(settings.SOCIAL_AUTH_EXCLUDE_URL_PATTERN)
-        if r.match(current_url):
-            return None
+
+        if hasattr(settings, 'SOCIAL_AUTH_EXCLUDE_URL_PATTERN'):
+            r = re.compile(settings.SOCIAL_AUTH_EXCLUDE_URL_PATTERN)
+            if r.match(current_url):
+                return None
 
         auth_cookie = request.COOKIES.get(self.cookie_name, '0').lower()
         auth_cookie = (auth_cookie in ('1', 'true', 'ok'))
