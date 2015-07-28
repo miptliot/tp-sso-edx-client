@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.contrib.auth import REDIRECT_FIELD_NAME
-from django.shortcuts import redirect
+from django.shortcuts import redirect, resolve_url
 
 
 def logout(request, next_page=None,
