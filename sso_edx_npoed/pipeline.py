@@ -4,11 +4,15 @@ import json
 from django.http import HttpResponseBadRequest, HttpResponse
 from django.shortcuts import redirect
 from django.utils.translation import ugettext as _
+from django.contrib.auth.models import User
 from social.exceptions import AuthException
 from social.pipeline import partial
 
 from student.cookies import set_logged_in_cookies
 from student.views import create_account_with_params
+
+from student.roles import CourseInstructorRole, CourseStaffRole
+
 import student
 
 from logging import getLogger
@@ -32,6 +36,18 @@ AUTH_ENTRY_REGISTER_API = 'register_api'
 def is_api(auth_entry):
     """Returns whether the auth entry point is via an API call."""
     return (auth_entry == AUTH_ENTRY_LOGIN_API) or (auth_entry == AUTH_ENTRY_REGISTER_API)
+
+
+def add_user_roles(user, permissions):
+    for role in permissions:
+        role['edx org']
+        role['edx course']
+        role['edx course run']
+        role['edx course enrollment']
+
+        CourseInstructorRole().add_users(user)
+        CourseStaffRole().add_users(user)
+
 
 AUTH_DISPATCH_URLS = {
     AUTH_ENTRY_LOGIN: '/login',
@@ -94,12 +110,18 @@ def ensure_user_information(strategy, auth_entry, backend=None, user=None, socia
 
         if request.session.get('ExternalAuthMap'):
             del request.session['ExternalAuthMap']
+        if User.objects.filter(email=data['email']).exists():
+            return redirect(AUTH_DISPATCH_URLS[AUTH_ENTRY_LOGIN])
 
         create_account_with_params(request, data)
         user = request.user
         user.is_active = True
         user.save()
         set_logged_in_cookies(request, JsonResponse({"success": True}))
+
+        # add roles for User
+        # add_user_roles(user, data['permissions'])
+
         return redirect(AUTH_DISPATCH_URLS[AUTH_ENTRY_LOGIN])
 
     def should_force_account_creation():
