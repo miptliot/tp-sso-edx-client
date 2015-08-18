@@ -33,6 +33,7 @@ class NpoedBackend(BaseOAuth2):
     ID_KEY = 'user_id'
     AUTHORIZATION_URL = 'http://sso.rnoep.raccoongang.com/oauth2/authorize'
     ACCESS_TOKEN_URL = 'http://sso.rnoep.raccoongang.com/oauth2/access_token'
+    USER_DATA_URL = 'http://sso.rnoep.raccoongang.com/oauth2/access_token/{access_token}/'
     DEFAULT_SCOPE = []
     REDIRECT_STATE = False
     ACCESS_TOKEN_METHOD = 'POST'
@@ -40,7 +41,7 @@ class NpoedBackend(BaseOAuth2):
     @handle_http_errors
     def auth_complete(self, *args, **kwargs):
         """Completes loging process, must return user instance"""
-        self.strategy.session.setdefault('sso_npoed-oauth2_state', self.data.get('state'))
+        self.strategy.session.setdefault('{}_state'.format(self.name), self.data.get('state'))
         self.strategy.session.setdefault('next', '/dashboard')
         return super(NpoedBackend, self).auth_complete(*args, **kwargs)
 
@@ -58,7 +59,7 @@ class NpoedBackend(BaseOAuth2):
     def user_data(self, access_token, *args, **kwargs):
         """ Grab user profile information from MIPT. """
         return self.get_json(
-            'http://sso.rnoep.raccoongang.com/oauth2/access_token/%s/' % access_token,
+            self.USER_DATA_URL.format(access_token=access_token),
             params={'access_token': access_token}
         )
 
