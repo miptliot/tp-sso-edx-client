@@ -40,13 +40,10 @@ def is_api(auth_entry):
 
 def add_user_roles(user, permissions):
     for role in permissions:
-        role['edx org']
-        role['edx course']
-        role['edx course run']
-        role['edx course enrollment']
-
-        CourseInstructorRole().add_users(user)
-        CourseStaffRole().add_users(user)
+        for cource_perm in permissions[role]:
+            print user, cource_perm
+            # CourseInstructorRole(cource_perm[0]).add_users(user)
+            # CourseStaffRole(cource_perm[0]).add_users(user)
 
 
 AUTH_DISPATCH_URLS = {
@@ -120,7 +117,7 @@ def ensure_user_information(strategy, auth_entry, backend=None, user=None, socia
         set_logged_in_cookies(request, JsonResponse({"success": True}))
 
         # add roles for User
-        # add_user_roles(user, data['permissions'])
+        add_user_roles(user, data['permissions'])
 
         return redirect(AUTH_DISPATCH_URLS[AUTH_ENTRY_LOGIN])
 
