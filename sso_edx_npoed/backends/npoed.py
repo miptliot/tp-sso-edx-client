@@ -9,7 +9,7 @@ log = logging.getLogger(__name__)
 # log.info(' '.join(["+" * 40]))
 
 
-SOCIAL_AUTH_PIPELINE = (
+DEFAULT_AUTH_PIPELINE = (
     'third_party_auth.pipeline.parse_query_params',
     'social.pipeline.social_auth.social_details',
     'social.pipeline.social_auth.social_uid',
@@ -38,6 +38,8 @@ class NpoedBackend(BaseOAuth2):
     REDIRECT_STATE = False
     ACCESS_TOKEN_METHOD = 'POST'
 
+    PIPELINE = DEFAULT_AUTH_PIPELINE
+
     @handle_http_errors
     def auth_complete(self, *args, **kwargs):
         """Completes loging process, must return user instance"""
@@ -48,9 +50,8 @@ class NpoedBackend(BaseOAuth2):
 
     def pipeline(self, pipeline, pipeline_index=0, *args, **kwargs):
         self.strategy.session.setdefault('auth_entry', 'register')
-        pipeline = SOCIAL_AUTH_PIPELINE
         return super(NpoedBackend, self).pipeline(
-            pipeline, pipeline_index=pipeline_index, *args, **kwargs
+            pipeline=self.PIPELINE, pipeline_index=pipeline_index, *args, **kwargs
         )
 
     def get_user_details(self, response):
