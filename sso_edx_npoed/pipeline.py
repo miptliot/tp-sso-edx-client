@@ -56,16 +56,14 @@ def set_roles_for_edx_users(user, permissions, strategy):
 
     role_ids = set(user.courseaccessrole_set.values_list('id', flat=True))
     new_role_ids = []
-    log.error("PERMISSIONS %s" %  permissions)
+    _log = None
+    is_global_staff = False
     for role in permissions:
         if role['obj_type'] == '*':
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
                 GlobalStaff().add_users(user)
-                if len(global_perm) < len(role['obj_perm']):
-                    _log = message.format(
-                        user.id, role['obj_type'], role['obj_id'],
-                        str(role['obj_perm'])
-                    )
+                is_global_staff = True
+
             elif 'Create' in role['obj_perm']:
                 if not CourseCreatorRole().has_user(user):
                     CourseCreatorRole().add_users(user)
@@ -74,7 +72,8 @@ def set_roles_for_edx_users(user, permissions, strategy):
                     user=user, role=CourseCreatorRole.ROLE
                     )
                 new_role_ids.append(car.id)
-            else:
+
+            if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and ['Create'] != role['obj_perm']:
                 _log = message.format(
                     user.id, role['obj_type'], role['obj_id'],
                     str(role['obj_perm'])
@@ -98,7 +97,7 @@ def set_roles_for_edx_users(user, permissions, strategy):
                     )
                 new_role_ids.append(car.id)
 
-            if role['obj_perm']!='*' and global_perm != set(role['obj_perm']) and staff_perm != set(role['obj_perm']):
+            if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and staff_perm != set(role['obj_perm']):
                 _log = message.format(
                     user.id, role['obj_type'], role['obj_id'],
                     str(role['obj_perm'])
@@ -199,9 +198,14 @@ def set_roles_for_edx_users(user, permissions, strategy):
                     user.id, role['obj_type'], role['obj_id'],
                     str(role['obj_perm'])
                 )
+        if _log:
+            logging.warning(_log)
 
-        logging.warning(_log)
+    if (not is_global_staff) and GlobalStaff().has_user(user):
+        GlobalStaff().remove_users(user)
+
     remove_roles = role_ids - set(new_role_ids)
+
     if remove_roles:
         entries = CourseAccessRole.objects.filter(id__in=list(remove_roles))
         entries.delete()
@@ -290,7 +294,7 @@ def ensure_user_information(strategy, auth_entry, backend=None, user=None, socia
         else:
             raise AuthEntryError(backend, 'auth_entry invalid')
 
-    user = response.get('user')
+    user = user or response.get('user')
     if user and not user.is_active:
         if allow_inactive_user:
             pass
