@@ -1,5 +1,6 @@
 import string  # pylint: disable-msg=deprecated-module
 import json
+import logging
 
 from django.http import HttpResponseBadRequest, HttpResponse
 from django.shortcuts import redirect
@@ -18,13 +19,10 @@ from student.roles import (
 )
 
 from openedx.core.djangoapps.content.course_structures.models import CourseStructure
-
 import student
 
-from logging import getLogger
+logging.basicConfig(filename='/edx/var/log/sso_roles.log', level=logging.DEBUG)
 
-
-logger = getLogger(__name__)
 
 # The following are various possible values for the AUTH_ENTRY_KEY.
 AUTH_ENTRY_LOGIN = 'login'
@@ -59,43 +57,75 @@ def set_roles_for_edx_users(user, permissions):
         if role['obj_type'] == '*':
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
                 GlobalStaff().add_users(user)
+                if len(global_perm) < len(role['obj_perm']):
+                    _log = '{} this role is not exist'.format(
+                            str(role['obj_perm'])
+                    )
             elif 'Create' in role['obj_perm']:
                 CourseCreatorRole().add_users(user)
             else:
-                logger.info('{} this role is not exist'.format(
-                        str(role['obj_perm']))
-                )
+                _log = '{} this role is not exist'.format(str(role['obj_perm']))
         elif role['obj_type'] == 'edx org':
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
                 OrgInstructorRole(role['obj_id']).add_users(user)
+                if len(global_perm) < len(role['obj_perm']):
+                    _log = '{} this role is not exist'.format(
+                            str(role['obj_perm'])
+                    )
             elif staff_perm.issubset(set(role['obj_perm'])):
                 OrgStaffRole(role['obj_id']).add_users(user)
+                if len(staff_perm) < len(role['obj_perm']):
+                    _log = '{} this role is not exist'.format(
+                            str(role['obj_perm'])
+                    )
             else:
-                logger.info('{} this role is not exist'.format(
-                        str(role['obj_perm']))
-                )
+                _log = '{} this role is not exist'.format(str(role['obj_perm']))
         elif role['obj_type'] == 'edx course':
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
                 CourseInstructorRole(role['obj_id']).add_users(user)
+                if len(global_perm) < len(role['obj_perm']):
+                    _log = '{} this role is not exist'.format(
+                            str(role['obj_perm'])
+                    )
             elif staff_perm.issubset(set(role['obj_perm'])):
                 CourseStaffRole(role['obj_id']).add_users(user)
+                if len(staff_perm) < len(role['obj_perm']):
+                    _log = '{} this role is not exist'.format(
+                            str(role['obj_perm'])
+                    )
             elif tester_perm.issubset(set(role['obj_perm'])):
                 CourseBetaTesterRole(role['obj_id']).add_users(user)
+                if len(tester_perm) < len(role['obj_perm']):
+                    _log = '{} this role is not exist'.format(
+                            str(role['obj_perm'])
+                    )
             else:
-                logger.info('{} this role is not exist'.format(
-                        str(role['obj_perm']))
+                _log = '{} this role is not exist'.format(
+                        str(role['obj_perm'])
                 )
         elif role['obj_type'] == 'edx course run':
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
                 CourseInstructorRole(role['obj_id']).add_users(user)
+                if len(global_perm) < len(role['obj_perm']):
+                    _log = '{} this role is not exist'.format(
+                            str(role['obj_perm'])
+                    )
             elif staff_perm.issubset(set(role['obj_perm'])):
                 CourseStaffRole(role['obj_id']).add_users(user)
+                if len(staff_perm) < len(role['obj_perm']):
+                    _log = '{} this role is not exist'.format(
+                        str(role['obj_perm'])
+                    )
             elif tester_perm.issubset(set(role['obj_perm'])):
                 CourseBetaTesterRole(role['obj_id']).add_users(user)
+                if len(tester_perm) < len(role['obj_perm']):
+                    _log = '{} this role is not exist'.format(
+                        str(role['obj_perm'])
+                    )
             else:
-                logger.info('{} this role is not exist'.format(
-                        str(role['obj_perm']))
-                )
+                _log = '{} this role is not exist'.format(str(role['obj_perm']))
+
+        logging.info(_log)
 
         # elif role['obj_type'] == 'edx course enrollment':
         #     if '*' in role['obj_perm']:
@@ -184,7 +214,8 @@ def ensure_user_information(strategy, auth_entry, backend=None, user=None, socia
         else:
             raise AuthEntryError(backend, 'auth_entry invalid')
 
-    if not user.is_active:
+    user = response.get('user')
+    if user and not user.is_active:
         if allow_inactive_user:
             pass
         elif social is not None:
