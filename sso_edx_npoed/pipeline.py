@@ -20,7 +20,7 @@ from student.roles import (
 
 from openedx.core.djangoapps.content.course_structures.models import CourseStructure
 import student
-
+from third_party_auth.pipeline import make_random_password
 
 # The following are various possible values for the AUTH_ENTRY_KEY.
 AUTH_ENTRY_LOGIN = 'login'
@@ -206,8 +206,9 @@ def ensure_user_information(strategy, auth_entry, backend=None, user=None, socia
         data = kwargs['response']
         data['terms_of_service'] = True
         data['honor_code'] = True
-        data['password'] = 'edx'
-        data['name'] = ' '.join([data['firstname'], data['lastname']])
+        data['password'] = make_random_password()
+        # force name creation if it is empty in sso-profile
+        data['name'] = ' '.join([data['firstname'], data['lastname']]).strip() or data['username']
         data['provider'] = backend.name
 
         if request.session.get('ExternalAuthMap'):
