@@ -5,6 +5,7 @@ from django.http import HttpResponseBadRequest, HttpResponse
 from django.shortcuts import redirect
 from django.utils.translation import ugettext as _
 from django.contrib.auth.models import User
+
 from social.exceptions import AuthException
 from social.pipeline import partial
 
@@ -13,7 +14,7 @@ from student.views import create_account_with_params
 
 from student.roles import (
     CourseInstructorRole, CourseStaffRole, GlobalStaff, OrgStaffRole,
-    UserBasedRole, CourseCreatorRole, CourseBetaTesterRole
+    UserBasedRole, CourseCreatorRole, CourseBetaTesterRole, OrgInstructorRole
 )
 
 from openedx.core.djangoapps.content.course_structures.models import CourseStructure
@@ -60,11 +61,19 @@ def set_roles_for_edx_users(user, permissions):
                 GlobalStaff().add_users(user)
             elif 'Create' in role['obj_perm']:
                 CourseCreatorRole().add_users(user)
+            else:
+                logger.info('{} this role is not exist'.format(
+                        str(role['obj_perm']))
+                )
         elif role['obj_type'] == 'edx org':
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
                 OrgInstructorRole(role['obj_id']).add_users(user)
             elif staff_perm.issubset(set(role['obj_perm'])):
                 OrgStaffRole(role['obj_id']).add_users(user)
+            else:
+                logger.info('{} this role is not exist'.format(
+                        str(role['obj_perm']))
+                )
         elif role['obj_type'] == 'edx course':
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
                 CourseInstructorRole(role['obj_id']).add_users(user)
@@ -72,6 +81,10 @@ def set_roles_for_edx_users(user, permissions):
                 CourseStaffRole(role['obj_id']).add_users(user)
             elif tester_perm.issubset(set(role['obj_perm'])):
                 CourseBetaTesterRole(role['obj_id']).add_users(user)
+            else:
+                logger.info('{} this role is not exist'.format(
+                        str(role['obj_perm']))
+                )
         elif role['obj_type'] == 'edx course run':
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
                 CourseInstructorRole(role['obj_id']).add_users(user)
@@ -79,6 +92,11 @@ def set_roles_for_edx_users(user, permissions):
                 CourseStaffRole(role['obj_id']).add_users(user)
             elif tester_perm.issubset(set(role['obj_perm'])):
                 CourseBetaTesterRole(role['obj_id']).add_users(user)
+            else:
+                logger.info('{} this role is not exist'.format(
+                        str(role['obj_perm']))
+                )
+
         # elif role['obj_type'] == 'edx course enrollment':
         #     if '*' in role['obj_perm']:
         #         ''
@@ -128,14 +146,7 @@ def ensure_user_information(strategy, auth_entry, backend=None, user=None, socia
     existing account or registration data) to proceed with the pipeline.
     """
 
-    # add roles for User
-    permissions = kwargs.get('response', {}).get('permissions')
-    if permissions:
-        set_roles_for_edxuser_roles(user, permissions)
-
-    def dispatch_to_login():
-        """Redirects to the login page."""
-        return redirect(AUTH_DISPATCH_URLS[AUTH_ENTRY_LOGIN])
+    response = {}
 
     def dispatch_to_register():
         """Redirects to the registration page."""
@@ -150,31 +161,24 @@ def ensure_user_information(strategy, auth_entry, backend=None, user=None, socia
 
         if request.session.get('ExternalAuthMap'):
             del request.session['ExternalAuthMap']
-        if User.objects.filter(email=data['email']).exists():
-            return redirect(AUTH_DISPATCH_URLS[AUTH_ENTRY_LOGIN])
 
-        create_account_with_params(request, data)
-        user = request.user
-        user.is_active = True
-        user.save()
-        set_logged_in_cookies(request, JsonResponse({"success": True}))
+        try:
+            user = User.objects.get(email=data['email'])
+        except User.DoesNotExist:
+            create_account_with_params(request, data)
+            user = request.user
+            user.is_active = True
+            user.save()
 
-        return redirect(AUTH_DISPATCH_URLS[AUTH_ENTRY_LOGIN])
-
-    def should_force_account_creation():
-        """ For some third party providers, we auto-create user accounts """
-        current_provider = provider.Registry.get_from_pipeline(
-            {'backend': backend.name, 'kwargs': kwargs}
-        )
-        return current_provider and current_provider.skip_email_verification
+        return {'user': user}
 
     if not user:
         if auth_entry in [AUTH_ENTRY_LOGIN_API, AUTH_ENTRY_REGISTER_API]:
             return HttpResponseBadRequest()
         elif auth_entry in [AUTH_ENTRY_LOGIN, AUTH_ENTRY_LOGIN_2]:
-            return dispatch_to_register()
+            response = dispatch_to_register()
         elif auth_entry in [AUTH_ENTRY_REGISTER, AUTH_ENTRY_REGISTER_2]:
-            return dispatch_to_register()
+            response = dispatch_to_register()
         elif auth_entry == AUTH_ENTRY_ACCOUNT_SETTINGS:
             raise AuthEntryError(backend, 'auth_entry is wrong. Settings requires a user.')
         else:
@@ -186,3 +190,10 @@ def ensure_user_information(strategy, auth_entry, backend=None, user=None, socia
         elif social is not None:
             student.views.reactivation_email_for_user(user)
             raise NotActivatedException(backend, user.email)
+
+    # add roles for User
+    permissions = kwargs.get('response', {}).get('permissions')
+    if permissions and user:
+        set_roles_for_edx_users(user, permissions)
+
+    return response
