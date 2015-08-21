@@ -11,7 +11,12 @@ from social.pipeline import partial
 from student.cookies import set_logged_in_cookies
 from student.views import create_account_with_params
 
-from student.roles import CourseInstructorRole, CourseStaffRole
+from student.roles import (
+    CourseInstructorRole, CourseStaffRole, GlobalStaff, OrgStaffRole,
+    UserBasedRole, CourseCreatorRole, CourseBetaTesterRole
+)
+
+from openedx.core.djangoapps.content.course_structures.models import CourseStructure
 
 import student
 
@@ -38,12 +43,45 @@ def is_api(auth_entry):
     return (auth_entry == AUTH_ENTRY_LOGIN_API) or (auth_entry == AUTH_ENTRY_REGISTER_API)
 
 
-def add_user_roles(user, permissions):
+def set_roles_for_edx_users(user, permissions):
+    '''
+    This function is specific functional for open-edx platform.
+    It create roles for edx users from sso permissions.
+    '''
+    global_perm = set([
+            'Read', 'Update', 'Delete', 'Publication', 'Enroll',
+            'Manage(permissions)'
+        ])
+    staff_perm = set(['Read', 'Update', 'Delete', 'Publication', 'Enroll'])
+    tester_perm = set(['Read', 'Enroll'])
     for role in permissions:
-        for cource_perm in permissions[role]:
-            print user, cource_perm
-            # CourseInstructorRole(cource_perm[0]).add_users(user)
-            # CourseStaffRole(cource_perm[0]).add_users(user)
+        if role['obj_type'] == '*':
+            if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
+                GlobalStaff().add_users(user)
+            elif 'Create' in role['obj_perm']:
+                CourseCreatorRole().add_users(user)
+        elif role['obj_type'] == 'edx org':
+            if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
+                OrgInstructorRole(role['obj_id']).add_users(user)
+            elif staff_perm.issubset(set(role['obj_perm'])):
+                OrgStaffRole(role['obj_id']).add_users(user)
+        elif role['obj_type'] == 'edx course':
+            if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
+                CourseInstructorRole(role['obj_id']).add_users(user)
+            elif staff_perm.issubset(set(role['obj_perm'])):
+                CourseStaffRole(role['obj_id']).add_users(user)
+            elif tester_perm.issubset(set(role['obj_perm'])):
+                CourseBetaTesterRole(role['obj_id']).add_users(user)
+        elif role['obj_type'] == 'edx course run':
+            if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
+                CourseInstructorRole(role['obj_id']).add_users(user)
+            elif staff_perm.issubset(set(role['obj_perm'])):
+                CourseStaffRole(role['obj_id']).add_users(user)
+            elif tester_perm.issubset(set(role['obj_perm'])):
+                CourseBetaTesterRole(role['obj_id']).add_users(user)
+        # elif role['obj_type'] == 'edx course enrollment':
+        #     if '*' in role['obj_perm']:
+        #         ''
 
 
 AUTH_DISPATCH_URLS = {
@@ -90,6 +128,11 @@ def ensure_user_information(strategy, auth_entry, backend=None, user=None, socia
     existing account or registration data) to proceed with the pipeline.
     """
 
+    # add roles for User
+    permissions = kwargs.get('response', {}).get('permissions')
+    if permissions:
+        set_roles_for_edxuser_roles(user, permissions)
+
     def dispatch_to_login():
         """Redirects to the login page."""
         return redirect(AUTH_DISPATCH_URLS[AUTH_ENTRY_LOGIN])
@@ -115,9 +158,6 @@ def ensure_user_information(strategy, auth_entry, backend=None, user=None, socia
         user.is_active = True
         user.save()
         set_logged_in_cookies(request, JsonResponse({"success": True}))
-
-        # add roles for User
-        add_user_roles(user, data['permissions'])
 
         return redirect(AUTH_DISPATCH_URLS[AUTH_ENTRY_LOGIN])
 
