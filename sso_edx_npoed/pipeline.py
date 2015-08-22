@@ -19,7 +19,7 @@ from student.roles import (
 
 from openedx.core.djangoapps.content.course_structures.models import CourseStructure
 import student
-from third_party_auth.pipeline import make_random_password
+from third_party_auth.pipeline import make_random_password, NotActivatedException, AuthEntryError
 from student.models import CourseAccessRole
 
 log = logging.getLogger(__name__)
