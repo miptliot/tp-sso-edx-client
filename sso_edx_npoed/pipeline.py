@@ -78,13 +78,16 @@ def set_roles_for_edx_users(user, permissions, strategy):
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
                 if not OrgInstructorRole(role['obj_id']).has_user(user):
                     OrgInstructorRole(role['obj_id']).add_users(user)
-                car = CourseAccessRole.objects.get(user=user, role=OrgInstructorRole.ROLE, org=role['obj_id'])
+                car = CourseAccessRole.objects.get(user=user,
+                                                   role=OrgInstructorRole(role['obj_id'])._role_name,
+                                                   org=role['obj_id'])
                 new_role_ids.append(car.id)
 
             elif staff_perm.issubset(set(role['obj_perm'])):
                 if not OrgStaffRole(role['obj_id']).has_user(user):
                     OrgStaffRole(role['obj_id']).add_users(user)
-                car = CourseAccessRole.objects.get(user=user, role=OrgStaffRole.ROLE, org=role['obj_id'])
+                car = CourseAccessRole.objects.get(user=user, role=OrgStaffRole(role['obj_id'])._role_name,
+                                                   org=role['obj_id'])
                 new_role_ids.append(car.id)
 
             if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and staff_perm != set(role['obj_perm']):
