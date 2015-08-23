@@ -11,8 +11,7 @@ from social.exceptions import AuthException
 from social.pipeline import partial
 
 #from student.cookies import set_logged_in_cookies
-from student.views import create_account_with_params
-
+from student.views import create_account_with_params, reactivation_email_for_user
 from student.roles import (
     CourseInstructorRole, CourseStaffRole, GlobalStaff, OrgStaffRole,
     UserBasedRole, CourseCreatorRole, CourseBetaTesterRole, OrgInstructorRole
@@ -20,7 +19,10 @@ from student.roles import (
 
 from openedx.core.djangoapps.content.course_structures.models import CourseStructure
 import student
+from third_party_auth.pipeline import make_random_password, NotActivatedException, AuthEntryError
+from student.models import CourseAccessRole
 
+log = logging.getLogger(__name__)
 
 # The following are various possible values for the AUTH_ENTRY_KEY.
 AUTH_ENTRY_LOGIN = 'login'
@@ -46,111 +48,106 @@ def set_roles_for_edx_users(user, permissions, strategy):
     It create roles for edx users from sso permissions.
     '''
 
-    message = 'For User: {}, object_type {} and object_id {} there is not matched Role for Permission set: {}'
-    logging.basicConfig(filename=strategy.get_setting('LOGGING_EDX_ROLES_URL'), level=logging.DEBUG)
+    log_message = 'For User: {}, object_type {} and object_id {} there is not matched Role for Permission set: {}'
 
-    global_perm = set([
-            'Read', 'Update', 'Delete', 'Publication', 'Enroll',
-            'Manage(permissions)'
-        ])
-    staff_perm = set(['Read', 'Update', 'Delete', 'Publication', 'Enroll'])
-    tester_perm = set(['Read', 'Enroll'])
+    global_perm = {'Read', 'Update', 'Delete', 'Publication', 'Enroll', 'Manage(permissions)'}
+    staff_perm = {'Read', 'Update', 'Delete', 'Publication', 'Enroll'}
+    tester_perm = {'Read', 'Enroll'}
+
+    role_ids = set(user.courseaccessrole_set.values_list('id', flat=True))
+    new_role_ids = []
+
+    is_global_staff = False
     for role in permissions:
+        _log = False
         if role['obj_type'] == '*':
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
                 GlobalStaff().add_users(user)
-                if len(global_perm) < len(role['obj_perm']):
-                    _log = message.format(
-                        user.id, role['obj_type'], role['obj_id'],
-                        str(role['obj_perm'])
-                    )
+                is_global_staff = True
+
             elif 'Create' in role['obj_perm']:
-                CourseCreatorRole().add_users(user)
-            else:
-                _log = message.format(
-                    user.id, role['obj_type'], role['obj_id'],
-                    str(role['obj_perm'])
-                )
+                if not CourseCreatorRole().has_user(user):
+                    CourseCreatorRole().add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=CourseCreatorRole.ROLE)
+                new_role_ids.append(car.id)
+
+            if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and ['Create'] != role['obj_perm']:
+                _log = True
+
         elif role['obj_type'] == 'edx org':
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
-                OrgInstructorRole(role['obj_id']).add_users(user)
-                if len(global_perm) < len(role['obj_perm']):
-                    _log = message.format(
-                        user.id, role['obj_type'], role['obj_id'],
-                        str(role['obj_perm'])
-                    )
+                if not OrgInstructorRole(role['obj_id']).has_user(user):
+                    OrgInstructorRole(role['obj_id']).add_users(user)
+                car = CourseAccessRole.objects.get(user=user,
+                                                   role=OrgInstructorRole(role['obj_id'])._role_name,
+                                                   org=role['obj_id'])
+                new_role_ids.append(car.id)
+
             elif staff_perm.issubset(set(role['obj_perm'])):
-                OrgStaffRole(role['obj_id']).add_users(user)
-                if len(staff_perm) < len(role['obj_perm']):
-                    _log = message.format(
-                        user.id, role['obj_type'], role['obj_id'],
-                        str(role['obj_perm'])
-                    )
-            else:
-                _log = message.format(
-                    user.id, role['obj_type'], role['obj_id'],
-                    str(role['obj_perm'])
-                )
+                if not OrgStaffRole(role['obj_id']).has_user(user):
+                    OrgStaffRole(role['obj_id']).add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=OrgStaffRole(role['obj_id'])._role_name,
+                                                   org=role['obj_id'])
+                new_role_ids.append(car.id)
+
+            if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and staff_perm != set(role['obj_perm']):
+                _log = True
+
         elif role['obj_type'] == 'edx course':
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
-                CourseInstructorRole(role['obj_id']).add_users(user)
-                if len(global_perm) < len(role['obj_perm']):
-                    _log = message.format(
-                        user.id, role['obj_type'], role['obj_id'],
-                        str(role['obj_perm'])
-                    )
+                if not CourseInstructorRole(role['obj_id']).has_user(user):
+                    CourseInstructorRole(role['obj_id']).add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=CourseInstructorRole.ROLE, course_id=role['obj_id'])
+                new_role_ids.append(car.id)
+
             elif staff_perm.issubset(set(role['obj_perm'])):
-                CourseStaffRole(role['obj_id']).add_users(user)
-                if len(staff_perm) < len(role['obj_perm']):
-                    _log = message.format(
-                        user.id, role['obj_type'], role['obj_id'],
-                        str(role['obj_perm'])
-                    )
+                if not CourseStaffRole(role['obj_id']).has_user(user):
+                    CourseStaffRole(role['obj_id']).add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=CourseStaffRole.ROLE, course_id=role['obj_id'])
+                new_role_ids.append(car.id)
+
             elif tester_perm.issubset(set(role['obj_perm'])):
-                CourseBetaTesterRole(role['obj_id']).add_users(user)
-                if len(tester_perm) < len(role['obj_perm']):
-                    _log = message.format(
-                        user.id, role['obj_type'], role['obj_id'],
-                        str(role['obj_perm'])
-                    )
-            else:
-                _log = message.format(
-                    user.id, role['obj_type'], role['obj_id'],
-                    str(role['obj_perm'])
-                )
+                if not CourseBetaTesterRole(role['obj_id']).has_user(user):
+                    CourseBetaTesterRole(role['obj_id']).add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=CourseBetaTesterRole.ROLE, course_id=role['obj_id'])
+                new_role_ids.append(car.id)
+
+            if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and \
+                staff_perm != set(role['obj_perm']) and tester_perm != set(role['obj_perm']):
+                _log = True
+
         elif role['obj_type'] == 'edx course run':
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
-                CourseInstructorRole(role['obj_id']).add_users(user)
-                if len(global_perm) < len(role['obj_perm']):
-                    _log = message.format(
-                        user.id, role['obj_type'], role['obj_id'],
-                        str(role['obj_perm'])
-                    )
+                if not CourseInstructorRole(role['obj_id']).has_user(user):
+                    CourseInstructorRole(role['obj_id']).add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=CourseInstructorRole.ROLE, course_id=role['obj_id'])
+                new_role_ids.append(car.id)
             elif staff_perm.issubset(set(role['obj_perm'])):
-                CourseStaffRole(role['obj_id']).add_users(user)
-                if len(staff_perm) < len(role['obj_perm']):
-                    _log = message.format(
-                        user.id, role['obj_type'], role['obj_id'],
-                        str(role['obj_perm'])
-                    )
+                if not CourseStaffRole(role['obj_id']).has_user(user):
+                    CourseStaffRole(role['obj_id']).add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=CourseStaffRole.ROLE, course_id=role['obj_id'])
+                new_role_ids.append(car.id)
             elif tester_perm.issubset(set(role['obj_perm'])):
-                CourseBetaTesterRole(role['obj_id']).add_users(user)
-                if len(tester_perm) < len(role['obj_perm']):
-                    _log = message.format(
-                        user.id, role['obj_type'], role['obj_id'],
-                        str(role['obj_perm'])
-                    )
-            else:
-                _log = message.format(
-                    user.id, role['obj_type'], role['obj_id'],
-                    str(role['obj_perm'])
-                )
+                if not CourseBetaTesterRole(role['obj_id']).has_user(user):
+                    CourseBetaTesterRole(role['obj_id']).add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=CourseBetaTesterRole.ROLE, course_id=role['obj_id'])
+                new_role_ids.append(car.id)
 
-        logging.warning(_log)
+            if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and \
+                staff_perm != set(role['obj_perm']) and tester_perm != set(role['obj_perm']):
+                _log = True
 
-        # elif role['obj_type'] == 'edx course enrollment':
-        #     if '*' in role['obj_perm']:
-        #         ''
+        if _log:
+            logging.warning(log_message.format(user.id, role['obj_type'], role['obj_id'], str(role['obj_perm'])))
+
+    if (not is_global_staff) and GlobalStaff().has_user(user):
+        GlobalStaff().remove_users(user)
+
+    remove_roles = role_ids - set(new_role_ids)
+
+    if remove_roles:
+        entries = CourseAccessRole.objects.filter(id__in=list(remove_roles))
+        entries.delete()
 
 
 AUTH_DISPATCH_URLS = {
@@ -206,8 +203,9 @@ def ensure_user_information(strategy, auth_entry, backend=None, user=None, socia
         data = kwargs['response']
         data['terms_of_service'] = True
         data['honor_code'] = True
-        data['password'] = 'edx'
-        data['name'] = ' '.join([data['firstname'], data['lastname']])
+        data['password'] = make_random_password()
+        # force name creation if it is empty in sso-profile
+        data['name'] = ' '.join([data['firstname'], data['lastname']]).strip() or data['username']
         data['provider'] = backend.name
 
         if request.session.get('ExternalAuthMap'):
@@ -235,7 +233,7 @@ def ensure_user_information(strategy, auth_entry, backend=None, user=None, socia
         else:
             raise AuthEntryError(backend, 'auth_entry invalid')
 
-    user = response.get('user')
+    user = user or response.get('user')
     if user and not user.is_active:
         if allow_inactive_user:
             pass
@@ -245,7 +243,7 @@ def ensure_user_information(strategy, auth_entry, backend=None, user=None, socia
 
     # add roles for User
     permissions = kwargs.get('response', {}).get('permissions')
-    if permissions and user:
+    if permissions is not None:
         set_roles_for_edx_users(user, permissions, strategy)
 
     return response

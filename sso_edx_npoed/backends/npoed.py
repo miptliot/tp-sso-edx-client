@@ -39,6 +39,7 @@ class NpoedBackend(BaseOAuth2):
     ACCESS_TOKEN_METHOD = 'POST'
 
     PIPELINE = DEFAULT_AUTH_PIPELINE
+    skip_email_verification = True
 
     @handle_http_errors
     def auth_complete(self, *args, **kwargs):
