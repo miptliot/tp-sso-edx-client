@@ -7,11 +7,13 @@ from django.shortcuts import redirect
 from django.utils.translation import ugettext as _
 from django.contrib.auth.models import User
 
+from social.apps.django_app.default.models import UserSocialAuth
 from social.exceptions import AuthException
 from social.pipeline import partial
 
 #from student.cookies import set_logged_in_cookies
 from student.views import create_account_with_params, reactivation_email_for_user
+from student.models import UserProfile
 from student.roles import (
     CourseInstructorRole, CourseStaffRole, GlobalStaff, OrgStaffRole,
     UserBasedRole, CourseCreatorRole, CourseBetaTesterRole, OrgInstructorRole
@@ -195,12 +197,12 @@ def ensure_user_information(strategy, auth_entry, backend=None, user=None, socia
     """
 
     response = {}
+    data = kwargs['response']
 
     def dispatch_to_register():
         """Redirects to the registration page."""
 
         request = strategy.request
-        data = kwargs['response']
         data['terms_of_service'] = True
         data['honor_code'] = True
         data['password'] = make_random_password()
@@ -232,6 +234,26 @@ def ensure_user_information(strategy, auth_entry, backend=None, user=None, socia
             raise AuthEntryError(backend, 'auth_entry is wrong. Settings requires a user.')
         else:
             raise AuthEntryError(backend, 'auth_entry invalid')
+    else:
+        if (user.username != data['username']) or (
+            user.first_name != data['firstname']) or (
+            user.last_name != data['lastname']):
+
+            user.username = data['username']
+            user.first_name = data['firstname']
+            user.last_name = data['lastname']
+            #user.email = data['email']
+            user.save()
+            
+            try:
+                user_profile = UserProfile.objects.get(user=user)
+            except User.DoesNotExist:
+                user_profile = None
+            except User.MultipleObjectsReturned:
+                user_profile = UserProfile.objects.filter(user=user)[0]
+
+            if user_profile:
+                user_profile.name = ' '.join([data['firstname'], data['lastname']]).strip() or data['username']
 
     user = user or response.get('user')
     if user and not user.is_active:
