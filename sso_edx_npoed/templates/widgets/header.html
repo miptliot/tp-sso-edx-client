@@ -239,7 +239,7 @@
           % if third_party_auth.is_enabled():
               % for enabled in provider.Registry.enabled():
                   % if enabled.get_setting('use_for_cms'):
-                      <a class="action action-signup" href="${pipeline.get_login_url(enabled.provider_id, pipeline.AUTH_ENTRY_LOGIN)}&next=${request.build_absolute_uri()}">${_("Sign Up")}</a>
+                      <a class="action action-signup" href="${pipeline.get_login_url(enabled.provider_id, pipeline.AUTH_ENTRY_REGISTER)}&next=${request.build_absolute_uri()}">${_("Sign Up")}</a>
                   % endif
               % endfor
           % else:
