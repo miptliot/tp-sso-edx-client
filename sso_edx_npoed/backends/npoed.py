@@ -41,6 +41,12 @@ class NpoedBackend(BaseOAuth2):
     PIPELINE = DEFAULT_AUTH_PIPELINE
     skip_email_verification = True
 
+    def auth_url(self):
+        return '{}&auth_entry={}'.format(
+            super(NpoedBackend, self).auth_url(),
+            self.data.get('auth_entry', 'login')
+        )
+
     @handle_http_errors
     def auth_complete(self, *args, **kwargs):
         """Completes loging process, must return user instance"""
