@@ -20,6 +20,7 @@ from openedx.core.djangoapps.content.course_structures.models import CourseStruc
 from third_party_auth.pipeline import (
     make_random_password, NotActivatedException, AuthEntryError
 )
+from opaque_keys.edx.locations import SlashSeparatedCourseKey
 
 log = logging.getLogger(__name__)
 
@@ -93,22 +94,25 @@ def set_roles_for_edx_users(user, permissions, strategy):
                 _log = True
 
         elif role['obj_type'] == 'edx course':
+
+            course_key = SlashSeparatedCourseKey(*role['obj_id'].split('/'))
+
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
-                if not CourseInstructorRole(role['obj_id']).has_user(user):
-                    CourseInstructorRole(role['obj_id']).add_users(user)
-                car = CourseAccessRole.objects.get(user=user, role=CourseInstructorRole.ROLE, course_id=role['obj_id'])
+                if not CourseInstructorRole(course_key).has_user(user):
+                    CourseInstructorRole(course_key).add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=CourseInstructorRole.ROLE, course_id=course_key)
                 new_role_ids.append(car.id)
 
             elif staff_perm.issubset(set(role['obj_perm'])):
-                if not CourseStaffRole(role['obj_id']).has_user(user):
-                    CourseStaffRole(role['obj_id']).add_users(user)
-                car = CourseAccessRole.objects.get(user=user, role=CourseStaffRole.ROLE, course_id=role['obj_id'])
+                if not CourseStaffRole(course_key).has_user(user):
+                    CourseStaffRole(course_key).add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=CourseStaffRole.ROLE, course_id=course_key)
                 new_role_ids.append(car.id)
 
             elif tester_perm.issubset(set(role['obj_perm'])):
-                if not CourseBetaTesterRole(role['obj_id']).has_user(user):
-                    CourseBetaTesterRole(role['obj_id']).add_users(user)
-                car = CourseAccessRole.objects.get(user=user, role=CourseBetaTesterRole.ROLE, course_id=role['obj_id'])
+                if not CourseBetaTesterRole(course_key).has_user(user):
+                    CourseBetaTesterRole(course_key).add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=CourseBetaTesterRole.ROLE, course_id=course_key)
                 new_role_ids.append(car.id)
 
             if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and \
@@ -116,20 +120,23 @@ def set_roles_for_edx_users(user, permissions, strategy):
                 _log = True
 
         elif role['obj_type'] == 'edx course run':
+
+            course_key = SlashSeparatedCourseKey(*role['obj_id'].split('/'))
+
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
-                if not CourseInstructorRole(role['obj_id']).has_user(user):
-                    CourseInstructorRole(role['obj_id']).add_users(user)
-                car = CourseAccessRole.objects.get(user=user, role=CourseInstructorRole.ROLE, course_id=role['obj_id'])
+                if not CourseInstructorRole(course_key).has_user(user):
+                    CourseInstructorRole(course_key).add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=CourseInstructorRole.ROLE, course_id=course_key)
                 new_role_ids.append(car.id)
             elif staff_perm.issubset(set(role['obj_perm'])):
-                if not CourseStaffRole(role['obj_id']).has_user(user):
-                    CourseStaffRole(role['obj_id']).add_users(user)
-                car = CourseAccessRole.objects.get(user=user, role=CourseStaffRole.ROLE, course_id=role['obj_id'])
+                if not CourseStaffRole(course_key).has_user(user):
+                    CourseStaffRole(course_key).add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=CourseStaffRole.ROLE, course_id=course_key)
                 new_role_ids.append(car.id)
             elif tester_perm.issubset(set(role['obj_perm'])):
-                if not CourseBetaTesterRole(role['obj_id']).has_user(user):
-                    CourseBetaTesterRole(role['obj_id']).add_users(user)
-                car = CourseAccessRole.objects.get(user=user, role=CourseBetaTesterRole.ROLE, course_id=role['obj_id'])
+                if not CourseBetaTesterRole(course_key).has_user(user):
+                    CourseBetaTesterRole(course_key).add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=CourseBetaTesterRole.ROLE, course_id=course_key)
                 new_role_ids.append(car.id)
 
             if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and \
@@ -265,6 +272,9 @@ def ensure_user_information(
     # add roles for User
     permissions = kwargs.get('response', {}).get('permissions')
     if permissions is not None:
-        set_roles_for_edx_users(user, permissions, strategy)
+        try:
+            set_roles_for_edx_users(user, permissions, strategy)
+        except Exception as e:
+            log.error(u'{}'.format(e))
 
     return response
