@@ -62,9 +62,9 @@ class NpoedBackend(BaseOAuth2):
     def user_data(self, access_token, *args, **kwargs):
         """ Grab user profile information from MIPT. """
         return self.get_json(
-            self.USER_DATA_URL.format(access_token=access_token,
-                                      url=settings.SSO_NPOED_URL),
-            params={'access_token': access_token}
+            '{}/users/me'.format(settings.SSO_NPOED_URL),
+            params={'access_token': access_token},
+            headers={'Authorization': 'access_token {}'.format(access_token)},
         )
 
     def do_auth(self, access_token, *args, **kwargs):

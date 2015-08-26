@@ -10,17 +10,16 @@ from django.contrib.auth.models import User
 from social.exceptions import AuthException
 from social.pipeline import partial
 
-#from student.cookies import set_logged_in_cookies
 from student.views import create_account_with_params, reactivation_email_for_user
+from student.models import UserProfile, CourseAccessRole
 from student.roles import (
     CourseInstructorRole, CourseStaffRole, GlobalStaff, OrgStaffRole,
     UserBasedRole, CourseCreatorRole, CourseBetaTesterRole, OrgInstructorRole
 )
-
 from openedx.core.djangoapps.content.course_structures.models import CourseStructure
-import student
-from third_party_auth.pipeline import make_random_password, NotActivatedException, AuthEntryError
-from student.models import CourseAccessRole
+from third_party_auth.pipeline import (
+    make_random_password, NotActivatedException, AuthEntryError
+)
 
 log = logging.getLogger(__name__)
 
@@ -187,8 +186,9 @@ class JsonResponse(HttpResponse):
 
 
 @partial.partial
-def ensure_user_information(strategy, auth_entry, backend=None, user=None, social=None,
-                             allow_inactive_user=False, *args, **kwargs):
+def ensure_user_information(
+    strategy, auth_entry, backend=None, user=None, social=None,
+    allow_inactive_user=False, *args, **kwargs):
     """
     Ensure that we have the necessary information about a user (either an
     existing account or registration data) to proceed with the pipeline.
@@ -205,7 +205,9 @@ def ensure_user_information(strategy, auth_entry, backend=None, user=None, socia
         data['honor_code'] = True
         data['password'] = make_random_password()
         # force name creation if it is empty in sso-profile
-        data['name'] = ' '.join([data['firstname'], data['lastname']]).strip() or data['username']
+        data['name'] = ' '.join(
+            [data['firstname'], data['lastname']]
+        ).strip() or data['username']
         data['provider'] = backend.name
 
         if request.session.get('ExternalAuthMap'):
@@ -229,16 +231,35 @@ def ensure_user_information(strategy, auth_entry, backend=None, user=None, socia
         elif auth_entry in [AUTH_ENTRY_REGISTER, AUTH_ENTRY_REGISTER_2]:
             response = dispatch_to_register()
         elif auth_entry == AUTH_ENTRY_ACCOUNT_SETTINGS:
-            raise AuthEntryError(backend, 'auth_entry is wrong. Settings requires a user.')
+            raise AuthEntryError(
+                backend, 'auth_entry is wrong. Settings requires a user.')
         else:
             raise AuthEntryError(backend, 'auth_entry invalid')
+    else:
+        user.username = data['username']
+        user.first_name = data['firstname']
+        user.last_name = data['lastname']
+        #user.email = data['email']
+        user.save()
+            
+        try:
+            user_profile = UserProfile.objects.get(user=user)
+        except User.DoesNotExist:
+            user_profile = None
+        except User.MultipleObjectsReturned:
+            user_profile = UserProfile.objects.filter(user=user)[0]
+
+        if user_profile:
+            user_profile.name = ' '.join(
+                [data['firstname'], data['lastname']]
+            ).strip() or data['username']
 
     user = user or response.get('user')
     if user and not user.is_active:
         if allow_inactive_user:
             pass
         elif social is not None:
-            student.views.reactivation_email_for_user(user)
+            reactivation_email_for_user(user)
             raise NotActivatedException(backend, user.email)
 
     # add roles for User
