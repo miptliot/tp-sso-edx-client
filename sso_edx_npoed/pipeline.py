@@ -195,12 +195,11 @@ def ensure_user_information(strategy, auth_entry, backend=None, user=None, socia
     """
 
     response = {}
-
+    data = kwargs['response']
     def dispatch_to_register():
         """Redirects to the registration page."""
 
         request = strategy.request
-        data = kwargs['response']
         data['terms_of_service'] = True
         data['honor_code'] = True
         data['password'] = make_random_password()
