@@ -10,17 +10,17 @@ from django.contrib.auth.models import User
 from social.exceptions import AuthException
 from social.pipeline import partial
 
-#from student.cookies import set_logged_in_cookies
 from student.views import create_account_with_params, reactivation_email_for_user
+from student.models import UserProfile, CourseAccessRole
 from student.roles import (
     CourseInstructorRole, CourseStaffRole, GlobalStaff, OrgStaffRole,
     UserBasedRole, CourseCreatorRole, CourseBetaTesterRole, OrgInstructorRole
 )
-
 from openedx.core.djangoapps.content.course_structures.models import CourseStructure
-import student
-from third_party_auth.pipeline import make_random_password, NotActivatedException, AuthEntryError
-from student.models import CourseAccessRole
+from third_party_auth.pipeline import (
+    make_random_password, NotActivatedException, AuthEntryError
+)
+from opaque_keys.edx.locations import SlashSeparatedCourseKey
 
 log = logging.getLogger(__name__)
 
@@ -94,22 +94,25 @@ def set_roles_for_edx_users(user, permissions, strategy):
                 _log = True
 
         elif role['obj_type'] == 'edx course':
+
+            course_key = SlashSeparatedCourseKey(*role['obj_id'].split('/'))
+
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
-                if not CourseInstructorRole(role['obj_id']).has_user(user):
-                    CourseInstructorRole(role['obj_id']).add_users(user)
-                car = CourseAccessRole.objects.get(user=user, role=CourseInstructorRole.ROLE, course_id=role['obj_id'])
+                if not CourseInstructorRole(course_key).has_user(user):
+                    CourseInstructorRole(course_key).add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=CourseInstructorRole.ROLE, course_id=course_key)
                 new_role_ids.append(car.id)
 
             elif staff_perm.issubset(set(role['obj_perm'])):
-                if not CourseStaffRole(role['obj_id']).has_user(user):
-                    CourseStaffRole(role['obj_id']).add_users(user)
-                car = CourseAccessRole.objects.get(user=user, role=CourseStaffRole.ROLE, course_id=role['obj_id'])
+                if not CourseStaffRole(course_key).has_user(user):
+                    CourseStaffRole(course_key).add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=CourseStaffRole.ROLE, course_id=course_key)
                 new_role_ids.append(car.id)
 
             elif tester_perm.issubset(set(role['obj_perm'])):
-                if not CourseBetaTesterRole(role['obj_id']).has_user(user):
-                    CourseBetaTesterRole(role['obj_id']).add_users(user)
-                car = CourseAccessRole.objects.get(user=user, role=CourseBetaTesterRole.ROLE, course_id=role['obj_id'])
+                if not CourseBetaTesterRole(course_key).has_user(user):
+                    CourseBetaTesterRole(course_key).add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=CourseBetaTesterRole.ROLE, course_id=course_key)
                 new_role_ids.append(car.id)
 
             if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and \
@@ -117,20 +120,23 @@ def set_roles_for_edx_users(user, permissions, strategy):
                 _log = True
 
         elif role['obj_type'] == 'edx course run':
+
+            course_key = SlashSeparatedCourseKey(*role['obj_id'].split('/'))
+
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
-                if not CourseInstructorRole(role['obj_id']).has_user(user):
-                    CourseInstructorRole(role['obj_id']).add_users(user)
-                car = CourseAccessRole.objects.get(user=user, role=CourseInstructorRole.ROLE, course_id=role['obj_id'])
+                if not CourseInstructorRole(course_key).has_user(user):
+                    CourseInstructorRole(course_key).add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=CourseInstructorRole.ROLE, course_id=course_key)
                 new_role_ids.append(car.id)
             elif staff_perm.issubset(set(role['obj_perm'])):
-                if not CourseStaffRole(role['obj_id']).has_user(user):
-                    CourseStaffRole(role['obj_id']).add_users(user)
-                car = CourseAccessRole.objects.get(user=user, role=CourseStaffRole.ROLE, course_id=role['obj_id'])
+                if not CourseStaffRole(course_key).has_user(user):
+                    CourseStaffRole(course_key).add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=CourseStaffRole.ROLE, course_id=course_key)
                 new_role_ids.append(car.id)
             elif tester_perm.issubset(set(role['obj_perm'])):
-                if not CourseBetaTesterRole(role['obj_id']).has_user(user):
-                    CourseBetaTesterRole(role['obj_id']).add_users(user)
-                car = CourseAccessRole.objects.get(user=user, role=CourseBetaTesterRole.ROLE, course_id=role['obj_id'])
+                if not CourseBetaTesterRole(course_key).has_user(user):
+                    CourseBetaTesterRole(course_key).add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=CourseBetaTesterRole.ROLE, course_id=course_key)
                 new_role_ids.append(car.id)
 
             if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and \
@@ -187,8 +193,9 @@ class JsonResponse(HttpResponse):
 
 
 @partial.partial
-def ensure_user_information(strategy, auth_entry, backend=None, user=None, social=None,
-                             allow_inactive_user=False, *args, **kwargs):
+def ensure_user_information(
+    strategy, auth_entry, backend=None, user=None, social=None,
+    allow_inactive_user=False, *args, **kwargs):
     """
     Ensure that we have the necessary information about a user (either an
     existing account or registration data) to proceed with the pipeline.
@@ -196,6 +203,7 @@ def ensure_user_information(strategy, auth_entry, backend=None, user=None, socia
 
     response = {}
     data = kwargs['response']
+
     def dispatch_to_register():
         """Redirects to the registration page."""
 
@@ -204,7 +212,8 @@ def ensure_user_information(strategy, auth_entry, backend=None, user=None, socia
         data['honor_code'] = True
         data['password'] = make_random_password()
         # force name creation if it is empty in sso-profile
-        data['name'] = ' '.join([data['firstname'], data['lastname']]).strip() or data['username']
+        data['name'] = ' '.join([data.get('firstname', ''),
+                                 data.get('lastname', '')]).strip() or data['username']
         data['provider'] = backend.name
 
         if request.session.get('ExternalAuthMap'):
@@ -228,21 +237,43 @@ def ensure_user_information(strategy, auth_entry, backend=None, user=None, socia
         elif auth_entry in [AUTH_ENTRY_REGISTER, AUTH_ENTRY_REGISTER_2]:
             response = dispatch_to_register()
         elif auth_entry == AUTH_ENTRY_ACCOUNT_SETTINGS:
-            raise AuthEntryError(backend, 'auth_entry is wrong. Settings requires a user.')
+            raise AuthEntryError(
+                backend, 'auth_entry is wrong. Settings requires a user.')
         else:
             raise AuthEntryError(backend, 'auth_entry invalid')
+    else:
+        user.username = data['username']
+        user.first_name = data['firstname']
+        user.last_name = data['lastname']
+        #user.email = data['email']
+        user.save()
+            
+        try:
+            user_profile = UserProfile.objects.get(user=user)
+        except User.DoesNotExist:
+            user_profile = None
+        except User.MultipleObjectsReturned:
+            user_profile = UserProfile.objects.filter(user=user)[0]
+
+        if user_profile:
+            user_profile.name = ' '.join(
+                [data['firstname'], data['lastname']]
+            ).strip() or data['username']
 
     user = user or response.get('user')
     if user and not user.is_active:
         if allow_inactive_user:
             pass
         elif social is not None:
-            student.views.reactivation_email_for_user(user)
+            reactivation_email_for_user(user)
             raise NotActivatedException(backend, user.email)
 
     # add roles for User
     permissions = kwargs.get('response', {}).get('permissions')
     if permissions is not None:
-        set_roles_for_edx_users(user, permissions, strategy)
+        try:
+            set_roles_for_edx_users(user, permissions, strategy)
+        except Exception as e:
+            log.error(u'{}'.format(e))
 
     return response

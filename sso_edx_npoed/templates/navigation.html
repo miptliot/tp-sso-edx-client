@@ -135,7 +135,7 @@ site_status_msg = get_site_status_msg(course_id)
               % if third_party_auth.is_enabled():
                   % for enabled in provider.Registry.enabled():
                       % if not enabled.get_setting('use_for_cms'):
-                          <a class="cta cta-register" href="${pipeline.get_login_url(enabled.provider_id, pipeline.AUTH_ENTRY_LOGIN)}${login_query()}">${_("Register Now")}</a>
+                          <a class="cta cta-register" href="${pipeline.get_login_url(enabled.provider_id, pipeline.AUTH_ENTRY_REGISTER)}${login_query()}">${_("Register Now")}</a>
                       % endif
                   % endfor
               % else:
