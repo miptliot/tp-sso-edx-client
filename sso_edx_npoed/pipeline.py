@@ -212,9 +212,8 @@ def ensure_user_information(
         data['honor_code'] = True
         data['password'] = make_random_password()
         # force name creation if it is empty in sso-profile
-        data['name'] = ' '.join(
-            [data['firstname'], data['lastname']]
-        ).strip() or data['username']
+        data['name'] = ' '.join([data.get('firstname', ''),
+                                 data.get('lastname', '')]).strip() or data['username']
         data['provider'] = backend.name
 
         if request.session.get('ExternalAuthMap'):
