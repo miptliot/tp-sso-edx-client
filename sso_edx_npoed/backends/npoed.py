@@ -70,7 +70,7 @@ class NpoedBackend(BaseOAuth2):
         return self.get_json(
             '{}/users/me'.format(settings.SSO_NPOED_URL),
             params={'access_token': access_token},
-            headers={'Authorization': 'access_token {}'.format(access_token)},
+            headers={'Authorization': 'Bearer {}'.format(access_token)},
         )
 
     def do_auth(self, access_token, *args, **kwargs):
