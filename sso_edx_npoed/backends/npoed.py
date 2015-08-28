@@ -30,7 +30,7 @@ DEFAULT_AUTH_PIPELINE = (
 class NpoedBackend(BaseOAuth2):
 
     name = 'sso_npoed-oauth2'
-    ID_KEY = 'user_id'
+    ID_KEY = 'username'
     AUTHORIZATION_URL = '{}/oauth2/authorize'.format(settings.SSO_NPOED_URL)
     ACCESS_TOKEN_URL = '{}/oauth2/access_token'.format(settings.SSO_NPOED_URL)
     USER_DATA_URL = '{url}/oauth2/access_token/{access_token}/'
