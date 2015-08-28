@@ -60,10 +60,13 @@ class PLPRedirection(object):
         else:
             start_url = ''
 
-        handle_local_urls = ('api', 'user_api', 'notifier_api', 'i18n', 'search', 'verify_student',
-                            'course_modes', 'jsi18n', '404', '500', 'wiki', 'notify', 'courses', 'xblock',
-                            'change_setting', 'account', 'notification_prefs', 'admin', 'survey',
-                            'oauth2', 'auth', 'login_oauth_token', 'certificates')
+        auth_process_urls = ('oauth2', 'auth', 'login_oauth_token')
+        api_urls = ('api', 'user_api', 'notifier_api')
+
+        handle_local_urls = ('i18n', 'search', 'verify_student', 'certificates', 'jsi18n',
+                            'course_modes',  '404', '500', 'wiki', 'notify', 'courses', 'xblock',
+                            'change_setting', 'account', 'notification_prefs', 'admin', 'survey')
+        handle_local_urls += auth_process_urls + api_urls
 
         if settings.DEBUG:
             debug_handle_local_urls = ('debug', settings.STATIC_URL, settings.MEDIA_URL)
@@ -80,8 +83,7 @@ class PLPRedirection(object):
         if start_url not in handle_local_urls or is_courses_list_or_about_page:
             return redirect("%s%s" % (settings.PLP_URL, current_url))
 
-        auth_process_urls = ('oauth2', 'auth', 'login_oauth_token')
-
         is_auth = request.user.is_authenticated()
-        if not is_auth and start_url not in auth_process_urls:
+        if not is_auth and start_url not in auth_process_urls and \
+                start_url not in api_urls:
             request.session['force_auth'] = True
