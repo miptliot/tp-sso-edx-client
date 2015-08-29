@@ -33,13 +33,12 @@ class SeamlessAuthorization(object):
         # Check for infinity redirection loop
         is_continue = (continue_url in current_url)
 
-        if auth_cookie and not is_continue and not is_auth or \
+        if (auth_cookie and not is_continue and not is_auth) or \
                 ('force_auth' in request.session and request.session.pop('force_auth')):
             query_dict = request.GET.copy()
             query_dict[REDIRECT_FIELD_NAME] = current_url
             query_dict['auth_entry'] = 'login'
             request.GET = query_dict
-            # next=?
             return auth(request, backend)
         elif not auth_cookie and is_auth:
             # Logout if user isn't logined on sso
