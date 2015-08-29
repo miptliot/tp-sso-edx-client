@@ -39,6 +39,7 @@ class SeamlessAuthorization(object):
             query_dict[REDIRECT_FIELD_NAME] = current_url
             query_dict['auth_entry'] = 'login'
             request.GET = query_dict
+            # next=?
             return auth(request, backend)
         elif not auth_cookie and is_auth:
             # Logout if user isn't logined on sso
@@ -60,7 +61,7 @@ class PLPRedirection(object):
         else:
             start_url = ''
 
-        auth_process_urls = ('oauth2', 'auth', 'login_oauth_token')
+        auth_process_urls = ('oauth2', 'auth', 'login_oauth_token', 'social-logout')
         api_urls = ('api', 'user_api', 'notifier_api')
 
         handle_local_urls = ('i18n', 'search', 'verify_student', 'certificates', 'jsi18n',
