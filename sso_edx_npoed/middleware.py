@@ -77,7 +77,7 @@ class PLPRedirection(object):
         if r.match(current_url):
             is_courses_list_or_about_page = True
 
-        if request.path == "/courses/":
+        if request.path == "/courses/" or request.path == "/courses":
             is_courses_list_or_about_page = True
 
         if start_url not in handle_local_urls or is_courses_list_or_about_page:
