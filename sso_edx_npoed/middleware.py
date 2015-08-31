@@ -41,6 +41,7 @@ class SeamlessAuthorization(object):
             query_dict[REDIRECT_FIELD_NAME] = current_url
             query_dict['auth_entry'] = 'login'
             request.GET = query_dict
+            logout(request)
             return auth(request, backend)
         elif not auth_cookie and is_auth:
             # Logout if user isn't logined on sso
