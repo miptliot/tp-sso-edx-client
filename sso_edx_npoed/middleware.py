@@ -30,7 +30,8 @@ class SeamlessAuthorization(object):
         continue_url = reverse('{0}:complete'.format(NAMESPACE),
                                args=(backend,))
         is_auth = request.user.is_authenticated()
-        is_same_user = (request.user.username == auth_cookie_user)
+        # TODO: Need to uncomment after fix PLP
+        is_same_user = True #(request.user.username == auth_cookie_user)
 
         # Check for infinity redirection loop
         is_continue = (continue_url in current_url)
