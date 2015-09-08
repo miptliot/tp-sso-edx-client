@@ -6,6 +6,7 @@ from django.contrib.auth import REDIRECT_FIELD_NAME, logout
 from django.shortcuts import redirect
 
 from social.apps.django_app.views import auth, NAMESPACE
+from student.models import CourseAccessRole
 
 
 class SeamlessAuthorization(object):
@@ -78,7 +79,12 @@ class PLPRedirection(object):
 
         is_courses_list_or_about_page = False
         r = re.compile(r'^/courses/%s/about' % settings.COURSE_ID_PATTERN)
-        if r.match(current_url):
+        user_roles = CourseAccessRole.objects.filter(
+            user=request.user,
+            role__in=('staff', 'instructor', 'course_creator_group', )
+        ).exists()
+
+        if r.match(current_url) or not (user_roles or request.user.is_staff):
             is_courses_list_or_about_page = True
 
         if request.path == "/courses/" or request.path == "/courses":
