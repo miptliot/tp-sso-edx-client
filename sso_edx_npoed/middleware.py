@@ -80,7 +80,7 @@ class PLPRedirection(object):
         is_courses_list_or_about_page = False
         r = re.compile(r'^/courses/%s/about' % settings.COURSE_ID_PATTERN)
         user_roles = CourseAccessRole.objects.filter(
-            user=request.user,
+            user_id=request.user.id,
             role__in=('staff', 'instructor', 'course_creator_group', )
         ).exists()
 
