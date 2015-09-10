@@ -76,7 +76,7 @@ def push_enrollment_to_sso(sender, instance, **kwargs):
     r = requests.post(sso_enrollment_api_url, headers=sso_api_headers, data=data)
     if r.ok:
         return r.text
-    log.error('API "{}" returned: {}'.format(sso_api_url, r.status_code))
+    log.error('API "{}" returned: {}'.format(sso_enrollment_api_url, r.status_code))
 
 
 @receiver(post_delete, sender=CourseEnrollment)
