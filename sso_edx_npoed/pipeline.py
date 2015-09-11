@@ -205,7 +205,7 @@ def ensure_user_information(
     data = kwargs['response']
 
     def dispatch_to_register():
-        """Redirects to the registration page."""
+        """Force user creation on login or register"""
 
         request = strategy.request
         data['terms_of_service'] = True
@@ -245,7 +245,6 @@ def ensure_user_information(
         user.username = data['username']
         user.first_name = data['firstname']
         user.last_name = data['lastname']
-        #user.email = data['email']
         user.save()
             
         try:

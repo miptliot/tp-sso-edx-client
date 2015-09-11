@@ -98,14 +98,17 @@ def delete_enrollment_from_sso(sender, instance, **kwargs):
         'user': instance.user.username
     }
 
-    r = requests.delete(sso_enrollment_api_url, sso_api_headers=headers, data=data)
+    r = requests.delete(sso_enrollment_api_url, sso_api_headers=sso_api_headers, data=data)
     if r.ok:
         return r.text
-    log.error('API "{}" returned: {}'.format(sso_api_url, r.status_code))
+    log.error('API "{}" returned: {}'.format(sso_enrollment_api_url, r.status_code))
 
 
 @receiver(post_save, sender=CourseRerunState)
 def push_objects_to_sso_past_rerun(sender, instance, **kwargs):
+    """
+    Only on succeeded rerun state sync rerun object (and it enrollments) to sso
+    """
     if instance.state == 'succeeded':
         push_objects_to_sso(sender=sender, course_key=instance.course_key,
                             **kwargs)
