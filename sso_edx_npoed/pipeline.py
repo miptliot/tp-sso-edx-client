@@ -20,7 +20,7 @@ from openedx.core.djangoapps.content.course_structures.models import CourseStruc
 from third_party_auth.pipeline import (
     make_random_password, NotActivatedException, AuthEntryError
 )
-from opaque_keys.edx.locations import SlashSeparatedCourseKey
+from opaque_keys.edx.keys import CourseKey
 
 log = logging.getLogger(__name__)
 
@@ -95,7 +95,7 @@ def set_roles_for_edx_users(user, permissions, strategy):
 
         elif role['obj_type'] == 'edxcourse':
 
-            course_key = SlashSeparatedCourseKey(*role['obj_id'].split('/'))
+            course_key = CourseKey.from_string(role['obj_id'])
 
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
                 if not CourseInstructorRole(course_key).has_user(user):
@@ -121,7 +121,7 @@ def set_roles_for_edx_users(user, permissions, strategy):
 
         elif role['obj_type'] == 'edxcourserun':
 
-            course_key = SlashSeparatedCourseKey(*role['obj_id'].split('/'))
+            course_key = CourseKey.from_string(role['obj_id'])
 
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
                 if not CourseInstructorRole(course_key).has_user(user):
@@ -274,6 +274,6 @@ def ensure_user_information(
         try:
             set_roles_for_edx_users(user, permissions, strategy)
         except Exception as e:
-            log.error(u'{}'.format(e))
+            log.error(u'set_roles_for_edx_users error: {}'.format(e))
 
     return response
