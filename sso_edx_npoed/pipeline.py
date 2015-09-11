@@ -20,7 +20,7 @@ from openedx.core.djangoapps.content.course_structures.models import CourseStruc
 from third_party_auth.pipeline import (
     make_random_password, NotActivatedException, AuthEntryError
 )
-from opaque_keys.edx.locations import SlashSeparatedCourseKey
+from opaque_keys.edx.keys import CourseKey
 
 log = logging.getLogger(__name__)
 
@@ -74,7 +74,7 @@ def set_roles_for_edx_users(user, permissions, strategy):
             if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and ['Create'] != role['obj_perm']:
                 _log = True
 
-        elif role['obj_type'] == 'edx org':
+        elif role['obj_type'] == 'edxorg':
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
                 if not OrgInstructorRole(role['obj_id']).has_user(user):
                     OrgInstructorRole(role['obj_id']).add_users(user)
@@ -93,9 +93,9 @@ def set_roles_for_edx_users(user, permissions, strategy):
             if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and staff_perm != set(role['obj_perm']):
                 _log = True
 
-        elif role['obj_type'] == 'edx course':
+        elif role['obj_type'] == 'edxcourse':
 
-            course_key = SlashSeparatedCourseKey(*role['obj_id'].split('/'))
+            course_key = CourseKey.from_string(role['obj_id'])
 
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
                 if not CourseInstructorRole(course_key).has_user(user):
@@ -119,9 +119,9 @@ def set_roles_for_edx_users(user, permissions, strategy):
                 staff_perm != set(role['obj_perm']) and tester_perm != set(role['obj_perm']):
                 _log = True
 
-        elif role['obj_type'] == 'edx course run':
+        elif role['obj_type'] == 'edxcourserun':
 
-            course_key = SlashSeparatedCourseKey(*role['obj_id'].split('/'))
+            course_key = CourseKey.from_string(role['obj_id'])
 
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
                 if not CourseInstructorRole(course_key).has_user(user):
@@ -274,6 +274,6 @@ def ensure_user_information(
         try:
             set_roles_for_edx_users(user, permissions, strategy)
         except Exception as e:
-            log.error(u'{}'.format(e))
+            log.error(u'set_roles_for_edx_users error: {}'.format(e))
 
     return response
