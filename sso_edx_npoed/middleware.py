@@ -1,4 +1,5 @@
 import re
+import os.path
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
@@ -76,6 +77,13 @@ class PLPRedirection(object):
         if settings.DEBUG:
             debug_handle_local_urls = ('debug', settings.STATIC_URL, settings.MEDIA_URL)
             handle_local_urls += debug_handle_local_urls
+
+        if request.path == "/dashboard/" or request.path == "/dashboard":
+            return redirect(os.path.join(settings.PLP_URL, 'my'))
+
+        r_url = re.compile(r'^/courses/(.*)/about').match(current_url)
+        if r_url:
+            return redirect(os.path.join(settings.PLP_URL, r_url.groups()[0]))
 
         is_courses_list_or_about_page = False
         r = re.compile(r'^/courses/%s/about' % settings.COURSE_ID_PATTERN)
