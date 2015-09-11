@@ -74,7 +74,7 @@ def set_roles_for_edx_users(user, permissions, strategy):
             if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and ['Create'] != role['obj_perm']:
                 _log = True
 
-        elif role['obj_type'] == 'edx org':
+        elif role['obj_type'] == 'edxorg':
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
                 if not OrgInstructorRole(role['obj_id']).has_user(user):
                     OrgInstructorRole(role['obj_id']).add_users(user)
@@ -93,7 +93,7 @@ def set_roles_for_edx_users(user, permissions, strategy):
             if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and staff_perm != set(role['obj_perm']):
                 _log = True
 
-        elif role['obj_type'] == 'edx course':
+        elif role['obj_type'] == 'edxcourse':
 
             course_key = SlashSeparatedCourseKey(*role['obj_id'].split('/'))
 
@@ -119,7 +119,7 @@ def set_roles_for_edx_users(user, permissions, strategy):
                 staff_perm != set(role['obj_perm']) and tester_perm != set(role['obj_perm']):
                 _log = True
 
-        elif role['obj_type'] == 'edx course run':
+        elif role['obj_type'] == 'edxcourserun':
 
             course_key = SlashSeparatedCourseKey(*role['obj_id'].split('/'))
 
