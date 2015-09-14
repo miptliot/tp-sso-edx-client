@@ -8,6 +8,7 @@ from django.shortcuts import redirect
 
 from social.apps.django_app.views import auth, NAMESPACE
 from student.models import CourseAccessRole
+from opaque_keys.edx.keys import CourseKey
 
 
 class SeamlessAuthorization(object):
@@ -83,7 +84,10 @@ class PLPRedirection(object):
 
         r_url = re.compile(r'^/courses/(.*)/about').match(current_url)
         if r_url:
-            return redirect(os.path.join(settings.PLP_URL, r_url.groups()[0]))
+            course = CourseKey.from_string(r_url.groups()[0])
+            return redirect(
+                os.path.join(settings.PLP_URL, course.org, course.course)
+            )
 
         is_courses_list_or_about_page = False
         r = re.compile(r'^/courses/%s/about' % settings.COURSE_ID_PATTERN)
