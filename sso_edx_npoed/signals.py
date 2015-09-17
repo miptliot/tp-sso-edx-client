@@ -79,6 +79,29 @@ def push_enrollment_to_sso(sender, instance, **kwargs):
     log.error('API "{}" returned: {}'.format(sso_enrollment_api_url, r.status_code))
 
 
+@receiver(SignalHandler.library_updated)
+def push_library_to_sso(sender, library_key, **kwargs):
+    if not hasattr(settings, 'SSO_API_URL'):
+        log.error('settings.SSO_API_URL is not defined')
+        return
+
+    if not hasattr(settings, 'SSO_API_TOKEN'):
+        log.error('SSO_API_TOKEN is not defined')
+        return
+
+    url = os.path.join(settings.SSO_API_URL, 'library/')
+    sso_api_headers = {'Authorization': 'Token {}'.format(settings.SSO_API_TOKEN)}
+
+
+
+    log.error('API "{}" returned: {}'.format(library_key, kwargs))
+    # r = requests.post(url, headers=sso_api_headers, data=data)
+
+    # if r.ok:
+    #     return r.text
+    # log.error('API "{}" returned: {}'.format(url, r.status_code))
+
+
 @receiver(post_delete, sender=CourseEnrollment)
 def delete_enrollment_from_sso(sender, instance, **kwargs):
     if not hasattr(settings, 'SSO_API_URL'):
