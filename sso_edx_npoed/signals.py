@@ -9,7 +9,6 @@ from django.db.models.signals import post_save, post_delete
 
 from courseware.courses import get_course
 from xmodule.modulestore.django import SignalHandler
-
 from student.models import CourseEnrollment
 from course_action_state.models import CourseRerunState
 
@@ -91,15 +90,12 @@ def push_library_to_sso(sender, library_key, **kwargs):
 
     url = os.path.join(settings.SSO_API_URL, 'library/')
     sso_api_headers = {'Authorization': 'Token {}'.format(settings.SSO_API_TOKEN)}
+    data = {'course_id': library_key.html_id(), 'org': library_key.org}
+    r = requests.post(url, headers=sso_api_headers, data=data)
 
-
-
-    log.error('API "{}" returned: {}'.format(library_key, kwargs))
-    # r = requests.post(url, headers=sso_api_headers, data=data)
-
-    # if r.ok:
-    #     return r.text
-    # log.error('API "{}" returned: {}'.format(url, r.status_code))
+    if r.ok:
+        return r.text
+    log.error('API "{}" returned: {}'.format(url, r.status_code))
 
 
 @receiver(post_delete, sender=CourseEnrollment)
