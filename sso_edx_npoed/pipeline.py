@@ -14,7 +14,8 @@ from student.views import create_account_with_params, reactivation_email_for_use
 from student.models import UserProfile, CourseAccessRole
 from student.roles import (
     CourseInstructorRole, CourseStaffRole, GlobalStaff, OrgStaffRole,
-    UserBasedRole, CourseCreatorRole, CourseBetaTesterRole, OrgInstructorRole
+    UserBasedRole, CourseCreatorRole, CourseBetaTesterRole, OrgInstructorRole,
+    LibraryUserRole, OrgLibraryUserRole
 )
 from openedx.core.djangoapps.content.course_structures.models import CourseStructure
 from third_party_auth.pipeline import (
@@ -90,10 +91,17 @@ def set_roles_for_edx_users(user, permissions, strategy):
                                                    org=role['obj_id'])
                 new_role_ids.append(car.id)
 
-            if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and staff_perm != set(role['obj_perm']):
+            elif 'Read' in role['obj_perm']:
+                if not OrgLibraryUserRole(role['obj_id']).has_user(user):
+                    OrgLibraryUserRole(role['obj_id']).add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=OrgLibraryUserRole.ROLE, org=role['obj_id'])
+                new_role_ids.append(car.id)
+
+            if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and \
+                    staff_perm != set(role['obj_perm']) and 'Read' not in role['obj_perm']:
                 _log = True
 
-        elif role['obj_type'] == 'edxcourse':
+        elif role['obj_type'] in ['edxcourse', 'edxlibrary']:
 
             course_key = CourseKey.from_string(role['obj_id'])
 
@@ -115,8 +123,14 @@ def set_roles_for_edx_users(user, permissions, strategy):
                 car = CourseAccessRole.objects.get(user=user, role=CourseBetaTesterRole.ROLE, course_id=course_key)
                 new_role_ids.append(car.id)
 
+            elif role['obj_type'] == 'edxlibrary' and 'Read' in role['obj_perm']:
+                if not LibraryUserRole(course_key).has_user(user):
+                    LibraryUserRole(course_key).add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=CourseBetaTesterRole.ROLE, course_id=course_key)
+                new_role_ids.append(car.id)
+
             if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and \
-                staff_perm != set(role['obj_perm']) and tester_perm != set(role['obj_perm']):
+                staff_perm != set(role['obj_perm']) and tester_perm != set(role['obj_perm']) and 'Read' not in role['obj_perm']:
                 _log = True
 
         elif role['obj_type'] == 'edxcourserun':
@@ -205,7 +219,7 @@ def ensure_user_information(
     data = kwargs['response']
 
     def dispatch_to_register():
-        """Redirects to the registration page."""
+        """Force user creation on login or register"""
 
         request = strategy.request
         data['terms_of_service'] = True
@@ -245,7 +259,6 @@ def ensure_user_information(
         user.username = data['username']
         user.first_name = data['firstname']
         user.last_name = data['lastname']
-        #user.email = data['email']
         user.save()
             
         try:
