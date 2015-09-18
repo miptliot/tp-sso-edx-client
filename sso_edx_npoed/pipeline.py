@@ -3,11 +3,8 @@ import json
 import logging
 
 from django.http import HttpResponseBadRequest, HttpResponse
-from django.shortcuts import redirect
-from django.utils.translation import ugettext as _
 from django.contrib.auth.models import User
 
-from social.exceptions import AuthException
 from social.pipeline import partial
 
 from student.views import create_account_with_params, reactivation_email_for_user
@@ -17,7 +14,6 @@ from student.roles import (
     UserBasedRole, CourseCreatorRole, CourseBetaTesterRole, OrgInstructorRole,
     LibraryUserRole, OrgLibraryUserRole
 )
-from openedx.core.djangoapps.content.course_structures.models import CourseStructure
 from third_party_auth.pipeline import (
     make_random_password, NotActivatedException, AuthEntryError
 )

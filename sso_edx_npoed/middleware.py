@@ -7,7 +7,6 @@ from django.contrib.auth import REDIRECT_FIELD_NAME, logout
 from django.shortcuts import redirect
 
 from social.apps.django_app.views import auth, NAMESPACE
-from student.models import CourseAccessRole
 from opaque_keys.edx.keys import CourseKey
 
 
@@ -73,6 +72,9 @@ class PLPRedirection(object):
         handle_local_urls = ('i18n', 'search', 'verify_student', 'certificates', 'jsi18n',
                             'course_modes',  '404', '500', 'wiki', 'notify', 'courses', 'xblock',
                             'change_setting', 'account', 'notification_prefs', 'admin', 'survey')
+
+        special_xblock_url = 'courses/course-v1:ITMOUniversity+WEBDEV+fall_2015/xblock/block-v1:ITMOUniversity+WEBDEV+fall_2015+type'
+
         handle_local_urls += auth_process_urls + api_urls
 
         if settings.DEBUG:
@@ -91,16 +93,18 @@ class PLPRedirection(object):
 
         is_courses_list_or_about_page = False
         r = re.compile(r'^/courses/%s/about' % settings.COURSE_ID_PATTERN)
-        user_roles = CourseAccessRole.objects.filter(
-            user_id=request.user.id,
-            role__in=('staff', 'instructor', 'course_creator_group', )
-        ).exists()
 
-        if r.match(current_url) or not (user_roles or request.user.is_staff):
+        if r.match(current_url):
             is_courses_list_or_about_page = True
 
         if request.path == "/courses/" or request.path == "/courses":
             is_courses_list_or_about_page = True
+
+        if request.path.startswith('/u/'):
+            return redirect(os.path.join(settings.PLP_URL, 'profile'))
+
+        if special_xblock_url in request.path:
+            is_courses_list_or_about_page = False
 
         if start_url not in handle_local_urls or is_courses_list_or_about_page:
             return redirect("%s%s" % (settings.PLP_URL, current_url))
