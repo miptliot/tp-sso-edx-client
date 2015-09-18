@@ -20,6 +20,10 @@ class SeamlessAuthorization(object):
         backend = settings.SSO_NPOED_BACKEND_NAME
         current_url = request.get_full_path()
 
+        special_xblock_url = 'courses/course-v1:ITMOUniversity+WEBDEV+fall_2015/xblock/block-v1:ITMOUniversity+WEBDEV+fall_2015+type'
+        if special_xblock_url in current_url:
+            return None
+
         # don't work for admin
         if hasattr(settings, 'SOCIAL_AUTH_EXCLUDE_URL_PATTERN'):
             r = re.compile(settings.SOCIAL_AUTH_EXCLUDE_URL_PATTERN)
@@ -73,8 +77,6 @@ class PLPRedirection(object):
                             'course_modes',  '404', '500', 'wiki', 'notify', 'courses', 'xblock',
                             'change_setting', 'account', 'notification_prefs', 'admin', 'survey')
 
-        special_xblock_url = 'courses/course-v1:ITMOUniversity+WEBDEV+fall_2015/xblock/block-v1:ITMOUniversity+WEBDEV+fall_2015+type'
-
         handle_local_urls += auth_process_urls + api_urls
 
         if settings.DEBUG:
@@ -98,13 +100,10 @@ class PLPRedirection(object):
             is_courses_list_or_about_page = True
 
         if request.path == "/courses/" or request.path == "/courses":
-            is_courses_list_or_about_page = True
+            return redirect(os.path.join(settings.PLP_URL, 'course'))
 
-        if request.path.startswith('/u/'):
+        if request.path.startswith('/u/') or request.path == "/account/settings/" or request.path == "/account/settings":
             return redirect(os.path.join(settings.PLP_URL, 'profile'))
-
-        if special_xblock_url in request.path:
-            is_courses_list_or_about_page = False
 
         if start_url not in handle_local_urls or is_courses_list_or_about_page:
             return redirect("%s%s" % (settings.PLP_URL, current_url))
