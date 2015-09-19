@@ -6,7 +6,6 @@ from social.utils import handle_http_errors
 from social.backends.oauth import BaseOAuth2
 
 log = logging.getLogger(__name__)
-# log.info(' '.join(["+" * 40]))
 
 
 DEFAULT_AUTH_PIPELINE = (
@@ -27,6 +26,7 @@ DEFAULT_AUTH_PIPELINE = (
     'third_party_auth.pipeline.login_analytics',
 )
 
+
 class NpoedBackend(BaseOAuth2):
 
     name = 'sso_npoed-oauth2'
@@ -42,6 +42,11 @@ class NpoedBackend(BaseOAuth2):
     skip_email_verification = True
 
     def auth_url(self):
+        '''
+        This function add "auth_entry" get attribute.
+        "auth_entry" can be login or register, for correct redirect to login or register form
+        on sso-provider.
+        '''
         return '{}&auth_entry={}'.format(
             super(NpoedBackend, self).auth_url(),
             self.data.get('auth_entry', 'login')
@@ -56,17 +61,20 @@ class NpoedBackend(BaseOAuth2):
         return super(NpoedBackend, self).auth_complete(*args, **kwargs)
 
     def pipeline(self, pipeline, pipeline_index=0, *args, **kwargs):
+        """
+        Hack for using in open edx our custom DEFAULT_AUTH_PIPELINE
+        """
         self.strategy.session.setdefault('auth_entry', 'register')
         return super(NpoedBackend, self).pipeline(
             pipeline=self.PIPELINE, pipeline_index=pipeline_index, *args, **kwargs
         )
 
     def get_user_details(self, response):
-        """ Return user details from MIPT account. """
+        """ Return user details from SSO account. """
         return response
 
     def user_data(self, access_token, *args, **kwargs):
-        """ Grab user profile information from MIPT. """
+        """ Grab user profile information from SSO. """
         return self.get_json(
             '{}/users/me'.format(settings.SSO_NPOED_URL),
             params={'access_token': access_token},
@@ -83,5 +91,8 @@ class NpoedBackend(BaseOAuth2):
 
 
 class NpoedBackendCMS(NpoedBackend):
-
+    """
+    Clone Backend for using in studio (cms).
+    We need different auth backend for cms and lms
+    """
     name = 'sso_npoed_cms-oauth2'

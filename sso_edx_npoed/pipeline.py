@@ -3,24 +3,21 @@ import json
 import logging
 
 from django.http import HttpResponseBadRequest, HttpResponse
-from django.shortcuts import redirect
-from django.utils.translation import ugettext as _
 from django.contrib.auth.models import User
 
-from social.exceptions import AuthException
 from social.pipeline import partial
 
 from student.views import create_account_with_params, reactivation_email_for_user
 from student.models import UserProfile, CourseAccessRole
 from student.roles import (
     CourseInstructorRole, CourseStaffRole, GlobalStaff, OrgStaffRole,
-    UserBasedRole, CourseCreatorRole, CourseBetaTesterRole, OrgInstructorRole
+    UserBasedRole, CourseCreatorRole, CourseBetaTesterRole, OrgInstructorRole,
+    LibraryUserRole, OrgLibraryUserRole
 )
-from openedx.core.djangoapps.content.course_structures.models import CourseStructure
 from third_party_auth.pipeline import (
     make_random_password, NotActivatedException, AuthEntryError
 )
-from opaque_keys.edx.locations import SlashSeparatedCourseKey
+from opaque_keys.edx.keys import CourseKey
 
 log = logging.getLogger(__name__)
 
@@ -74,7 +71,7 @@ def set_roles_for_edx_users(user, permissions, strategy):
             if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and ['Create'] != role['obj_perm']:
                 _log = True
 
-        elif role['obj_type'] == 'edx org':
+        elif role['obj_type'] == 'edxorg':
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
                 if not OrgInstructorRole(role['obj_id']).has_user(user):
                     OrgInstructorRole(role['obj_id']).add_users(user)
@@ -90,12 +87,19 @@ def set_roles_for_edx_users(user, permissions, strategy):
                                                    org=role['obj_id'])
                 new_role_ids.append(car.id)
 
-            if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and staff_perm != set(role['obj_perm']):
+            elif 'Read' in role['obj_perm']:
+                if not OrgLibraryUserRole(role['obj_id']).has_user(user):
+                    OrgLibraryUserRole(role['obj_id']).add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=OrgLibraryUserRole.ROLE, org=role['obj_id'])
+                new_role_ids.append(car.id)
+
+            if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and \
+                    staff_perm != set(role['obj_perm']) and 'Read' not in role['obj_perm']:
                 _log = True
 
-        elif role['obj_type'] == 'edx course':
+        elif role['obj_type'] in ['edxcourse', 'edxlibrary']:
 
-            course_key = SlashSeparatedCourseKey(*role['obj_id'].split('/'))
+            course_key = CourseKey.from_string(role['obj_id'])
 
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
                 if not CourseInstructorRole(course_key).has_user(user):
@@ -115,13 +119,19 @@ def set_roles_for_edx_users(user, permissions, strategy):
                 car = CourseAccessRole.objects.get(user=user, role=CourseBetaTesterRole.ROLE, course_id=course_key)
                 new_role_ids.append(car.id)
 
+            elif role['obj_type'] == 'edxlibrary' and 'Read' in role['obj_perm']:
+                if not LibraryUserRole(course_key).has_user(user):
+                    LibraryUserRole(course_key).add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=CourseBetaTesterRole.ROLE, course_id=course_key)
+                new_role_ids.append(car.id)
+
             if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and \
-                staff_perm != set(role['obj_perm']) and tester_perm != set(role['obj_perm']):
+                staff_perm != set(role['obj_perm']) and tester_perm != set(role['obj_perm']) and 'Read' not in role['obj_perm']:
                 _log = True
 
-        elif role['obj_type'] == 'edx course run':
+        elif role['obj_type'] == 'edxcourserun':
 
-            course_key = SlashSeparatedCourseKey(*role['obj_id'].split('/'))
+            course_key = CourseKey.from_string(role['obj_id'])
 
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
                 if not CourseInstructorRole(course_key).has_user(user):
@@ -205,7 +215,7 @@ def ensure_user_information(
     data = kwargs['response']
 
     def dispatch_to_register():
-        """Redirects to the registration page."""
+        """Force user creation on login or register"""
 
         request = strategy.request
         data['terms_of_service'] = True
@@ -245,7 +255,6 @@ def ensure_user_information(
         user.username = data['username']
         user.first_name = data['firstname']
         user.last_name = data['lastname']
-        #user.email = data['email']
         user.save()
             
         try:
@@ -274,6 +283,6 @@ def ensure_user_information(
         try:
             set_roles_for_edx_users(user, permissions, strategy)
         except Exception as e:
-            log.error(u'{}'.format(e))
+            log.error(u'set_roles_for_edx_users error: {}'.format(e))
 
     return response

@@ -5,7 +5,9 @@ from django.shortcuts import redirect
 
 def logout(request, next_page=None,
            redirect_field_name=REDIRECT_FIELD_NAME, *args, **kwargs):
-
+    """
+    This view needed for correct redirect to sso-logout page
+    """
     if (redirect_field_name in request.POST or
             redirect_field_name in request.GET):
         next_page = request.POST.get(redirect_field_name,
