@@ -7,7 +7,6 @@ from django.contrib.auth import REDIRECT_FIELD_NAME, logout
 from django.shortcuts import redirect
 
 from social.apps.django_app.views import auth, NAMESPACE
-from student.models import CourseAccessRole
 from opaque_keys.edx.keys import CourseKey
 
 
@@ -20,6 +19,10 @@ class SeamlessAuthorization(object):
         """
         backend = settings.SSO_NPOED_BACKEND_NAME
         current_url = request.get_full_path()
+
+        special_xblock_url = 'courses/course-v1:ITMOUniversity+WEBDEV+fall_2015/xblock/block-v1:ITMOUniversity+WEBDEV+fall_2015+type'
+        if special_xblock_url in current_url:
+            return None
 
         # don't work for admin
         if hasattr(settings, 'SOCIAL_AUTH_EXCLUDE_URL_PATTERN'):
@@ -73,6 +76,7 @@ class PLPRedirection(object):
         handle_local_urls = ('i18n', 'search', 'verify_student', 'certificates', 'jsi18n',
                             'course_modes',  '404', '500', 'wiki', 'notify', 'courses', 'xblock',
                             'change_setting', 'account', 'notification_prefs', 'admin', 'survey')
+
         handle_local_urls += auth_process_urls + api_urls
 
         if settings.DEBUG:
@@ -86,21 +90,20 @@ class PLPRedirection(object):
         if r_url:
             course = CourseKey.from_string(r_url.groups()[0])
             return redirect(
-                os.path.join(settings.PLP_URL, course.org, course.course)
+                os.path.join(settings.PLP_URL, 'course', course.org, course.course)
             )
 
         is_courses_list_or_about_page = False
         r = re.compile(r'^/courses/%s/about' % settings.COURSE_ID_PATTERN)
-        user_roles = CourseAccessRole.objects.filter(
-            user_id=request.user.id,
-            role__in=('staff', 'instructor', 'course_creator_group', )
-        ).exists()
 
-        if r.match(current_url) or not (user_roles or request.user.is_staff):
+        if r.match(current_url):
             is_courses_list_or_about_page = True
 
         if request.path == "/courses/" or request.path == "/courses":
-            is_courses_list_or_about_page = True
+            return redirect(os.path.join(settings.PLP_URL, 'course'))
+
+        if request.path.startswith('/u/') or request.path == "/account/settings/" or request.path == "/account/settings":
+            return redirect(os.path.join(settings.PLP_URL, 'profile'))
 
         if start_url not in handle_local_urls or is_courses_list_or_about_page:
             return redirect("%s%s" % (settings.PLP_URL, current_url))
