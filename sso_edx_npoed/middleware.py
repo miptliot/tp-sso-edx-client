@@ -7,7 +7,11 @@ from django.contrib.auth import REDIRECT_FIELD_NAME, logout
 from django.shortcuts import redirect
 
 from social.apps.django_app.views import auth, NAMESPACE
-from opaque_keys.edx.keys import CourseKey
+try:
+    from opaque_keys.edx.keys import CourseKey
+except:
+    msg = "Oh, it's not edx"
+    pass
 
 
 class SeamlessAuthorization(object):
@@ -73,9 +77,11 @@ class PLPRedirection(object):
         auth_process_urls = ('oauth2', 'auth', 'login_oauth_token', 'social-logout')
         api_urls = ('api', 'user_api', 'notifier_api')
 
-        handle_local_urls = ('i18n', 'search', 'verify_student', 'certificates', 'jsi18n',
-                            'course_modes',  '404', '500', 'wiki', 'notify', 'courses', 'xblock',
-                            'change_setting', 'account', 'notification_prefs', 'admin', 'survey', 'event')
+        handle_local_urls = (
+            'i18n', 'search', 'verify_student', 'certificates', 'jsi18n', 'course_modes',  '404', '500',
+            'wiki', 'notify', 'courses', 'xblock', 'change_setting', 'account', 'notification_prefs', 'admin',
+            'survey', 'event', 'instructor_task_status', 'edinsights_service',
+        )
 
         handle_local_urls += auth_process_urls + api_urls
 
