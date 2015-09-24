@@ -162,7 +162,8 @@ def set_roles_for_edx_users(user, permissions, strategy):
     remove_roles = role_ids - set(new_role_ids)
 
     if remove_roles:
-        entries = CourseAccessRole.objects.filter(id__in=list(remove_roles))
+        entries = CourseAccessRole.objects.exclude(
+            course_id__icontains='library').filter(id__in=list(remove_roles))
         entries.delete()
 
 
