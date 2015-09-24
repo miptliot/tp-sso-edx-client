@@ -57,7 +57,7 @@ class NpoedBackend(BaseOAuth2):
         """Completes loging process, must return user instance"""
         self.strategy.session.setdefault('{}_state'.format(self.name),
                                          self.data.get('state'))
-        self.strategy.session.setdefault('next', '/dashboard')
+        self.strategy.session.setdefault('next', '/home')
         return super(NpoedBackend, self).auth_complete(*args, **kwargs)
 
     def pipeline(self, pipeline, pipeline_index=0, *args, **kwargs):
