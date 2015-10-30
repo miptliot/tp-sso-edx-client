@@ -32,7 +32,7 @@ def push_objects_to_sso(sender, course_key, **kwargs):
     url = os.path.join(settings.SSO_API_URL, 'course/')
     sso_api_headers = {'Authorization': 'Token {}'.format(settings.SSO_API_TOKEN)}
     course = get_course(course_key)
-    name = course.name or course_key.run
+    name = course.display_name or course_key.run
     start = course.start and datetime.strftime(course.start, '%Y-%m-%dT%H:%M:%SZ') or None
     end = course.end and datetime.strftime(course.end, '%Y-%m-%dT%H:%M:%SZ') or None
     data = {
