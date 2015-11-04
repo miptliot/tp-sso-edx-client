@@ -1,9 +1,14 @@
 import string  # pylint: disable-msg=deprecated-module
 import json
 import logging
+import re
+import random
+from unidecode import unidecode
 
 from django.http import HttpResponseBadRequest, HttpResponse
 from django.contrib.auth.models import User
+from django.core import validators
+from django import forms
 
 from social.pipeline import partial
 
@@ -203,6 +208,28 @@ class JsonResponse(HttpResponse):
         )
 
 
+def _get_username(username=''):
+    if username:
+        try:
+            username = unidecode(username).replace(' ', '')
+        except:
+            pass
+        try:
+            username_validator = validators.RegexValidator('^[-a-zA-Z0-9_]+$')
+            username = username_validator(username)
+        except forms.ValidationError:
+            username = ''.join(re.findall(r'([-a-zA-Z0-9_])', username) or \
+                                   random.sample(string.ascii_letters, 10))
+        try:
+            users = User.objects.get(username=username)
+        except User.DoesNotExist:
+            pass
+        else:
+            users = User.objects.filter(username__icontains=username).count()
+            username = '{}{}'.format(username, users + 1)
+        return username
+
+
 @partial.partial
 def ensure_user_information(
     strategy, auth_entry, backend=None, user=None, social=None,
@@ -214,6 +241,8 @@ def ensure_user_information(
 
     response = {}
     data = kwargs['response']
+    _username = data['username']
+    data['username'] = _get_username(username=data['username'])
 
     def dispatch_to_register():
         """Force user creation on login or register"""
@@ -278,6 +307,10 @@ def ensure_user_information(
         elif social is not None:
             reactivation_email_for_user(user)
             raise NotActivatedException(backend, user.email)
+
+    if _username != data['username']:
+        user.username = _username
+        user.save()
 
     # add roles for User
     permissions = kwargs.get('response', {}).get('permissions')
