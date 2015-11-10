@@ -4,6 +4,10 @@ from django.conf import settings
 
 from social.utils import handle_http_errors
 from social.backends.oauth import BaseOAuth2
+try:
+    from third_party_auth.models import OAuth2ProviderConfig
+except ImportError:
+    OAuth2ProviderConfig = None
 
 log = logging.getLogger(__name__)
 
@@ -40,6 +44,18 @@ class NpoedBackend(BaseOAuth2):
 
     PIPELINE = DEFAULT_AUTH_PIPELINE
     skip_email_verification = True
+
+    def setting(self, name, default=None):
+        """Return setting value from strategy"""
+        if OAuth2ProviderConfig:
+            provider_config = OAuth2ProviderConfig.current(self.name)
+            if not provider_config.enabled:
+                raise Exception("Can't fetch setting of a disabled backend.")
+            try:
+                return provider_config.get_setting(name)
+            except KeyError:
+                pass
+        return super(NpoedBackend, self).setting(name, default=default)
 
     def auth_url(self):
         '''
