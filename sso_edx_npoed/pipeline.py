@@ -235,6 +235,8 @@ def ensure_user_information(
         except User.DoesNotExist:
             create_account_with_params(request, data)
             user = request.user
+            user.first_name = data.get('firstname')
+            user.last_name = data.get('lastname')
             user.is_active = True
             user.save()
 
