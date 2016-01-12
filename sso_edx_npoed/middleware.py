@@ -70,12 +70,12 @@ class PLPRedirection(object):
 
         current_url = request.get_full_path()
         if current_url:
-            start_url =  current_url.split('/')[1]
+            start_url =  current_url.split('?')[0].split('/')[1]
         else:
             start_url = ''
 
         auth_process_urls = ('oauth2', 'auth', 'login_oauth_token', 'social-logout')
-        api_urls = ('api', 'user_api', 'notifier_api')
+        api_urls = ('api', 'user_api', 'notifier_api', 'update_example_certificate',)
 
         handle_local_urls = (
             'i18n', 'search', 'verify_student', 'certificates', 'jsi18n', 'course_modes',  '404', '500','i18n.js',
