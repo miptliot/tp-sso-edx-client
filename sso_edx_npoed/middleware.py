@@ -24,8 +24,14 @@ class SeamlessAuthorization(object):
         backend = settings.SSO_NPOED_BACKEND_NAME
         current_url = request.get_full_path()
 
+        # ITMO url hardcode
         special_xblock_url = 'courses/course-v1:ITMOUniversity+WEBDEV+fall_2015/xblock/block-v1:ITMOUniversity+WEBDEV+fall_2015+type'
         if special_xblock_url in current_url:
+            return None
+
+        # UrFU url hardcode
+        special_urfu_xblock_url = 'courses/course-v1:urfu+METR+fall_2015/xblock/block-v1:urfu+METR+fall_2015+type'
+        if special_urfu_xblock_url in current_url:
             return None
 
         # don't work for admin
@@ -70,12 +76,12 @@ class PLPRedirection(object):
 
         current_url = request.get_full_path()
         if current_url:
-            start_url =  current_url.split('/')[1]
+            start_url =  current_url.split('?')[0].split('/')[1]
         else:
             start_url = ''
 
         auth_process_urls = ('oauth2', 'auth', 'login_oauth_token', 'social-logout')
-        api_urls = ('api', 'user_api', 'notifier_api')
+        api_urls = ('api', 'user_api', 'notifier_api', 'update_example_certificate',)
 
         handle_local_urls = (
             'i18n', 'search', 'verify_student', 'certificates', 'jsi18n', 'course_modes',  '404', '500','i18n.js',

@@ -255,11 +255,12 @@ def ensure_user_information(
         else:
             raise AuthEntryError(backend, 'auth_entry invalid')
     else:
-        user.email = data['email']
-        user.username = data['username']
-        user.first_name = data['firstname']
-        user.last_name = data['lastname']
-        user.save()
+        if user.id != 1:
+            user.email = data['email']
+            user.username = data['username']
+            user.first_name = data['firstname']
+            user.last_name = data['lastname']
+            user.save()
             
         try:
             user_profile = UserProfile.objects.get(user=user)
