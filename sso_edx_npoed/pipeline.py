@@ -270,9 +270,8 @@ def ensure_user_information(
             user_profile = UserProfile.objects.filter(user=user)[0]
 
         if user_profile:
-            user_profile.name = ' '.join(
-                [data['firstname'], data['lastname']]
-            ).strip() or data['username']
+            user_profile.name = user.get_full_name()
+            user_profile.save()
 
     user = user or response.get('user')
     if user and not user.is_active:

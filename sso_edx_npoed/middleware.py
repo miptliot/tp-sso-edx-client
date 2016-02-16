@@ -34,6 +34,9 @@ class SeamlessAuthorization(object):
         if special_urfu_xblock_url in current_url:
             return None
 
+        if 'certificates' in current_url:
+            return None
+
         # don't work for admin
         if hasattr(settings, 'SOCIAL_AUTH_EXCLUDE_URL_PATTERN'):
             r = re.compile(settings.SOCIAL_AUTH_EXCLUDE_URL_PATTERN)
@@ -81,7 +84,7 @@ class PLPRedirection(object):
             start_url = ''
 
         auth_process_urls = ('oauth2', 'auth', 'login_oauth_token', 'social-logout')
-        api_urls = ('api', 'user_api', 'notifier_api', 'update_example_certificate',)
+        api_urls = ('certificates', 'api', 'user_api', 'notifier_api', 'update_example_certificate', 'update_certificate', 'request_certificate',)
 
         handle_local_urls = (
             'i18n', 'search', 'verify_student', 'certificates', 'jsi18n', 'course_modes',  '404', '500','i18n.js',
