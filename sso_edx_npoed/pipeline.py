@@ -156,7 +156,7 @@ def set_roles_for_edx_users(user, permissions, strategy):
         if _log:
             logging.warning(log_message.format(user.id, role['obj_type'], role['obj_id'], str(role['obj_perm'])))
 
-    if (not is_global_staff) and GlobalStaff().has_user(user):
+    if (not is_global_staff) and GlobalStaff().has_user(user) and user.id != 1:
         GlobalStaff().remove_users(user)
 
     remove_roles = role_ids - set(new_role_ids)
