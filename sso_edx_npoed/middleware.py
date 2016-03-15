@@ -38,10 +38,11 @@ class SeamlessAuthorization(object):
             return None
 
         # don't work for admin
-        if hasattr(settings, 'SOCIAL_AUTH_EXCLUDE_URL_PATTERN'):
-            r = re.compile(settings.SOCIAL_AUTH_EXCLUDE_URL_PATTERN)
-            if r.match(current_url):
-                return None
+        for attr in ['SOCIAL_AUTH_EXCLUDE_URL_PATTERN', 'AUTOCOMPLETE_EXCLUDE_URL_PATTERN']:
+            if hasattr(settings, attr):
+                r = re.compile(getattr(settings, attr))
+                if r.match(current_url):
+                    return None
 
         auth_cookie = request.COOKIES.get(self.cookie_name, '0').lower()
         auth_cookie_user = request.COOKIES.get('{}_user'.format(self.cookie_name))
