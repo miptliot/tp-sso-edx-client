@@ -271,6 +271,7 @@ def ensure_user_information(
 
         if user_profile:
             user_profile.name = user.get_full_name()
+            user_profile.meta = json.dumps(data.get('meta', {}))
             user_profile.save()
 
     user = user or response.get('user')
