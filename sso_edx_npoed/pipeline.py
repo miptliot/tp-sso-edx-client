@@ -97,7 +97,7 @@ def set_roles_for_edx_users(user, permissions, strategy):
                     staff_perm != set(role['obj_perm']) and 'Read' not in role['obj_perm']:
                 _log = True
 
-        elif role['obj_type'] in ['edxcourse', 'edxlibrary']:
+        elif role['obj_type'] in ['edxcourse']:
 
             course_key = CourseKey.from_string(role['obj_id'])
 
@@ -116,12 +116,6 @@ def set_roles_for_edx_users(user, permissions, strategy):
             elif tester_perm.issubset(set(role['obj_perm'])):
                 if not CourseBetaTesterRole(course_key).has_user(user):
                     CourseBetaTesterRole(course_key).add_users(user)
-                car = CourseAccessRole.objects.get(user=user, role=CourseBetaTesterRole.ROLE, course_id=course_key)
-                new_role_ids.append(car.id)
-
-            elif role['obj_type'] == 'edxlibrary' and 'Read' in role['obj_perm']:
-                if not LibraryUserRole(course_key).has_user(user):
-                    LibraryUserRole(course_key).add_users(user)
                 car = CourseAccessRole.objects.get(user=user, role=CourseBetaTesterRole.ROLE, course_id=course_key)
                 new_role_ids.append(car.id)
 
