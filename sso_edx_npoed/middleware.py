@@ -24,6 +24,10 @@ class SeamlessAuthorization(object):
         backend = settings.SSO_NPOED_BACKEND_NAME
         current_url = request.get_full_path()
 
+        # Special URLs (SSO-299)
+        if '/handler_noauth/' in current_url:
+            return None
+
         # ITMO url hardcode
         special_xblock_url = 'courses/course-v1:ITMOUniversity+WEBDEV+fall_2015/xblock/block-v1:ITMOUniversity+WEBDEV+fall_2015+type'
         if special_xblock_url in current_url:
