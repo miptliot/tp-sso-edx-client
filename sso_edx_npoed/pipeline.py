@@ -1,3 +1,5 @@
+# coding: utf8
+
 import string  # pylint: disable-msg=deprecated-module
 import json
 import logging
@@ -273,7 +275,7 @@ def ensure_user_information(
         if allow_inactive_user:
             pass
         elif social is not None:
-            reactivation_email_for_user(user)
+            reactivation_email_for_user(user)  # зачем это надо?
             raise NotActivatedException(backend, user.email)
 
     # add roles for User

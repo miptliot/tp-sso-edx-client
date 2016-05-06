@@ -1,3 +1,5 @@
+# coding: utf8
+
 import re
 import os.path
 
@@ -113,8 +115,9 @@ class PLPRedirection(object):
         r_url = re.compile(r'^/courses/(.*)/about').match(current_url)
         if r_url:
             course = CourseKey.from_string(r_url.groups()[0])
+            # переход к конкретной сессии в plp
             return redirect(
-                os.path.join(settings.PLP_URL, 'course', course.org, course.course)
+                os.path.join(settings.PLP_URL, 'course', course.org, course.course) + '?session=%s' % course.run
             )
 
         is_courses_list_or_about_page = False
