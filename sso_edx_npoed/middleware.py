@@ -1,5 +1,6 @@
 import re
 import os.path
+import requests
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
@@ -140,3 +141,35 @@ class PLPRedirection(object):
         if not is_auth and start_url not in auth_process_urls and \
                 start_url not in api_urls:
             request.session['force_auth'] = True
+
+
+class CheckHonorAccepted(object):
+
+    def process_request(self, request):
+        current_url = request.get_full_path()
+        course_pattern = re.compile(r'/course-v1:(\w+)\+(\w+)\+(\w+)/|$')
+        course_pages = re.compile(r'courseware|discussion')
+        check_course = re.search(course_pattern, current_url)
+        check_pages = re.search(course_pages, current_url)
+
+        if check_course and check_course.group() and check_pages and request.user.is_authenticated():
+            university = check_course.group(1)
+            course = check_course.group(2)
+            session = check_course.group(3)
+            course_id = 'course-v1:%s+%s+%s' % (university, course, session)
+            if request.session.has_key('accepted_honor_codes') and isinstance(request.session['accepted_honor_codes'], dict):
+                if request.session['accepted_honor_codes'].get(course_id):
+                    return None
+            request_url = os.path.join(settings.PLP_URL, 'api', 'user-accepted-honor-code')
+            plp_api_key = settings.PLP_API_KEY
+            r = requests.post(request_url,
+                              {'course_id': course_id, 'username': request.user.username},
+                              headers={'X-PLP-API-KEY': plp_api_key},
+                              verify=False)
+            accepted_honor_code = r.json()['honor']
+            if not accepted_honor_code:
+                return redirect(os.path.join(settings.PLP_URL, 'course/{}/{}?session={}'.format(university, course, session)))
+            if request.session.has_key('accepted_honor_codes') and isinstance(request.session['accepted_honor_codes'], dict):
+                request.session['accepted_honor_codes'][course_id] = True
+            else:
+                request.session['accepted_honor_codes'] = {course_id: True}
