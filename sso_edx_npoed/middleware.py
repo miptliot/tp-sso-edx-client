@@ -47,11 +47,13 @@ class SeamlessAuthorization(object):
             return None
 
         # don't work for admin
+        in_exclude_path = False
         for attr in ['SOCIAL_AUTH_EXCLUDE_URL_PATTERN', 'AUTOCOMPLETE_EXCLUDE_URL_PATTERN']:
             if hasattr(settings, attr):
                 r = re.compile(getattr(settings, attr))
                 if r.match(current_url):
-                    return None
+                    in_exclude_path = True
+                    break
 
         auth_cookie = request.COOKIES.get(self.cookie_name, '0').lower()
         auth_cookie_user = request.COOKIES.get('{}_user'.format(self.cookie_name))
@@ -73,8 +75,8 @@ class SeamlessAuthorization(object):
             request.GET = query_dict
             logout(request)
             return auth(request, backend)
-        elif not auth_cookie and is_auth:
-            # Logout if user isn't logined on sso
+        elif not auth_cookie and is_auth and not in_exclude_path:
+            # Logout if user isn't logined on sso except for admin
             logout(request)
 
         return None
