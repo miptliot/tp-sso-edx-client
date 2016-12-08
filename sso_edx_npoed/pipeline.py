@@ -17,7 +17,7 @@ from student.roles import (
     LibraryUserRole, OrgLibraryUserRole
 )
 from third_party_auth.pipeline import (
-    make_random_password, NotActivatedException, AuthEntryError
+    make_random_password, AuthEntryError
 )
 from opaque_keys.edx.keys import CourseKey
 
@@ -275,8 +275,11 @@ def ensure_user_information(
         if allow_inactive_user:
             pass
         elif social is not None:
-            reactivation_email_for_user(user)  # зачем это надо?
-            raise NotActivatedException(backend, user.email)
+            reactivation_email_for_user(user)
+            log.warning(
+                'User "%s" is using third_party_auth to login but has not yet activated their account. ',
+                user.username
+            )
 
     # add roles for User
     permissions = kwargs.get('response', {}).get('permissions')
