@@ -1,3 +1,5 @@
+# coding: utf8
+
 import string  # pylint: disable-msg=deprecated-module
 import json
 import logging
