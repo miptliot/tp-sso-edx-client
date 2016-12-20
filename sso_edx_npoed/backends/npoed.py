@@ -123,3 +123,12 @@ class NpoedBackendCMS(NpoedBackend):
     We need different auth backend for cms and lms
     """
     name = 'sso_npoed_cms-oauth2'
+
+    def get_user(self, user_id):
+        try:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            user = User.objects.get(id=user_id)
+            return user
+        except:
+            return super(NpoedBackend, self).get_user(user_id)
