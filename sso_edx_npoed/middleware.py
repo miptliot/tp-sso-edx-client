@@ -10,6 +10,7 @@ from django.contrib.auth import REDIRECT_FIELD_NAME, logout
 from django.shortcuts import redirect
 
 from social.apps.django_app.views import auth, NAMESPACE
+from .views import logout as sso_logout
 try:
     from opaque_keys.edx.keys import CourseKey
 except:
@@ -80,6 +81,9 @@ class SeamlessAuthorization(object):
         elif not auth_cookie and is_auth and not in_exclude_path:
             # Logout if user isn't logined on sso except for admin
             logout(request)
+
+        if request.user.is_authenticated() and not request.user.is_active:
+            return sso_logout(request)
 
         return None
 
