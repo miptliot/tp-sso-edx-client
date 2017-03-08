@@ -116,6 +116,9 @@ class PLPRedirection(object):
             return redirect(os.path.join(settings.PLP_URL, 'my'))
 
         r_url = re.compile(r'^/courses/(.*)/about').match(current_url)
+        es_url = re.compile(r'^/courses/(.*)/enroll_staff').match(current_url)
+        if es_url:
+            r_url = es_url
         if r_url:
             course = CourseKey.from_string(r_url.groups()[0])
             # переход к конкретной сессии в plp
