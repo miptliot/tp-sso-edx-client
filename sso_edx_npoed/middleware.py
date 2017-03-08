@@ -31,6 +31,10 @@ class SeamlessAuthorization(object):
         if '/handler_noauth/' in current_url:
             return None
 
+        # Special URLs (EDX-310)
+        if '/xqueue/' in current_url:
+            return None
+
         # ITMO url hardcode
         special_xblock_url = 'courses/course-v1:ITMOUniversity+WEBDEV+fall_2015/xblock/block-v1:ITMOUniversity+WEBDEV+fall_2015+type'
         if special_xblock_url in current_url:
@@ -38,6 +42,12 @@ class SeamlessAuthorization(object):
 
         special_xblock_url = 'courses/course-v1:ITMOUniversity+WEBDEV+spring_2016/xblock/block-v1:ITMOUniversity+WEBDEV+spring_2016+type'
         if special_xblock_url in current_url:
+            return None
+
+        # ITMO url hardcode 2
+        course_id_itmo = 'courses/course-v1:ITMOUniversity+'
+        handler_itmo_academy = '/handler/check_lab'
+        if course_id_itmo in current_url and handler_itmo_academy in current_url:
             return None
 
         # UrFU url hardcode
