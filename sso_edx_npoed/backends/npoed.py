@@ -1,4 +1,5 @@
 import logging
+import urllib
 
 from django.conf import settings
 
@@ -65,6 +66,21 @@ class NpoedBackend(BaseOAuth2):
         "auth_entry" can be login or register, for correct redirect to login or register form
         on sso-provider.
         '''
+        next_url = self.data.get('next')
+        if next_url:
+            host = self.strategy.request.get_host()
+            scheme = self.strategy.request.scheme
+            if ':' in host:
+                _host, port = host.rsplit(':', 1)
+                if (scheme == 'http' and port == '80') or (scheme == 'https' and port == '443'):
+                    host = _host
+            base_url = '{}://{}'.format(scheme, host)
+            next_url = urllib.quote('{}{}'.format(base_url, next_url))
+            return '{}&auth_entry={}&next_url={}'.format(
+                super(NpoedBackend, self).auth_url(),
+                self.data.get('auth_entry', 'login'),
+                next_url,
+            )
         return '{}&auth_entry={}'.format(
             super(NpoedBackend, self).auth_url(),
             self.data.get('auth_entry', 'login')
