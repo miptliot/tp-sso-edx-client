@@ -5,5 +5,5 @@ from .views import DeactivateUsersAPIView
 
 
 urlpatterns = [
-    url('^sso/deactivate-users/?$', DeactivateUsersAPIView.as_view()),
+    url('^api/sso-deactivate-users/?$', DeactivateUsersAPIView.as_view()),
 ]
