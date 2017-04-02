@@ -8,6 +8,7 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.contrib.auth import REDIRECT_FIELD_NAME, logout
 from django.shortcuts import redirect
+from django.utils.translation import LANGUAGE_SESSION_KEY
 
 from social.apps.django_app.views import auth, NAMESPACE
 try:
@@ -31,6 +32,10 @@ class SeamlessAuthorization(object):
         if '/handler_noauth/' in current_url:
             return None
 
+        # Special URLs (EDX-310)
+        if '/xqueue/' in current_url:
+            return None
+
         # ITMO url hardcode
         special_xblock_url = 'courses/course-v1:ITMOUniversity+WEBDEV+fall_2015/xblock/block-v1:ITMOUniversity+WEBDEV+fall_2015+type'
         if special_xblock_url in current_url:
@@ -38,6 +43,12 @@ class SeamlessAuthorization(object):
 
         special_xblock_url = 'courses/course-v1:ITMOUniversity+WEBDEV+spring_2016/xblock/block-v1:ITMOUniversity+WEBDEV+spring_2016+type'
         if special_xblock_url in current_url:
+            return None
+
+        # ITMO url hardcode 2
+        course_id_itmo = 'courses/course-v1:ITMOUniversity+'
+        handler_itmo_academy = '/handler/check_lab'
+        if course_id_itmo in current_url and handler_itmo_academy in current_url:
             return None
 
         # UrFU url hardcode
@@ -181,3 +192,11 @@ class CheckHonorAccepted(object):
                 request.session['accepted_honor_codes'][course_id] = True
             else:
                 request.session['accepted_honor_codes'] = {course_id: True}
+
+
+class SetLanguageFromCookie(object):
+    def process_request(self, request):
+        lang_cookie = request.COOKIES.get(settings.LANGUAGE_COOKIE_NAME)
+        lang_session = request.session.get(LANGUAGE_SESSION_KEY)
+        if lang_cookie and lang_cookie != lang_session and lang_cookie in dict(settings.LANGUAGES).keys():
+            request.session[LANGUAGE_SESSION_KEY] = lang_cookie
