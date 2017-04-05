@@ -112,6 +112,10 @@
                   <li class="nav-item nav-course-settings-advanced">
                     <a href="${advanced_settings_url}">${_("Advanced Settings")}</a>
                   </li>
+                  % else:
+                  <li class="nav-item nav-course-settings-advanced">
+                    <a href="${advanced_settings_url}">${_("Advanced Settings")} (readonly)</a>
+                  </li>
                   % endif
                   % if settings.FEATURES.get('CERTIFICATES_HTML_VIEW', False) and \
                     (user.is_superuser or user.is_staff or \

@@ -115,7 +115,7 @@ class PLPRedirection(object):
         api_urls = ('certificates', 'api', 'user_api', 'notifier_api', 'update_example_certificate', 'update_certificate', 'request_certificate',)
 
         handle_local_urls = (
-            'i18n', 'search', 'verify_student', 'certificates', 'jsi18n', 'course_modes',  '404', '500','i18n.js',
+            'i18n', 'search', 'verify_student', 'certificates', 'jsi18n', 'course_modes',  '404', '500','i18n.js', 'js', 'sso',
             'wiki', 'notify', 'courses', 'xblock', 'change_setting', 'account', 'notification_prefs', 'admin',
             'survey', 'event', 'instructor_task_status', 'edinsights_service', 'openassessment', 'instructor_report',
         )
