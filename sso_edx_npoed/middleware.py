@@ -8,6 +8,7 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.contrib.auth import REDIRECT_FIELD_NAME, logout
 from django.shortcuts import redirect
+from django.utils.translation import LANGUAGE_SESSION_KEY
 
 from social.apps.django_app.views import auth, NAMESPACE
 from .views import logout as sso_logout
@@ -195,3 +196,11 @@ class CheckHonorAccepted(object):
                 request.session['accepted_honor_codes'][course_id] = True
             else:
                 request.session['accepted_honor_codes'] = {course_id: True}
+
+
+class SetLanguageFromCookie(object):
+    def process_request(self, request):
+        lang_cookie = request.COOKIES.get(settings.LANGUAGE_COOKIE_NAME)
+        lang_session = request.session.get(LANGUAGE_SESSION_KEY)
+        if lang_cookie and lang_cookie != lang_session and lang_cookie in dict(settings.LANGUAGES).keys():
+            request.session[LANGUAGE_SESSION_KEY] = lang_cookie
