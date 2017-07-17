@@ -199,7 +199,6 @@ class JsonResponse(HttpResponse):
         )
 
 
-@partial.partial
 def ensure_user_information(
     strategy, auth_entry, backend=None, user=None, social=None,
     allow_inactive_user=False, *args, **kwargs):
@@ -229,13 +228,15 @@ def ensure_user_information(
         try:
             user = User.objects.get(email=data['email'])
         except User.DoesNotExist:
-            create_account_with_params(request, data)
-            user = request.user
+            _provider = data.pop('provider')
+            user = create_account_with_params(request, data)
+            data['provider'] = _provider
             user.first_name = data.get('firstname')
             user.last_name = data.get('lastname')
             user.is_active = True
             user.save()
 
+            return {}
         return {'user': user}
 
     if not user:
@@ -260,9 +261,9 @@ def ensure_user_information(
             
         try:
             user_profile = UserProfile.objects.get(user=user)
-        except User.DoesNotExist:
+        except UserProfile.DoesNotExist:
             user_profile = None
-        except User.MultipleObjectsReturned:
+        except UserProfile.MultipleObjectsReturned:
             user_profile = UserProfile.objects.filter(user=user)[0]
 
         if user_profile:
