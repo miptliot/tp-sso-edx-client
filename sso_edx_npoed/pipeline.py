@@ -11,7 +11,7 @@ from social.pipeline import partial
 
 from openedx.core.djangoapps.user_api.models import UserPreference
 from student.views import create_account_with_params, reactivation_email_for_user
-from student.models import UserProfile, CourseAccessRole
+from student.models import UserProfile, CourseAccessRole, create_comments_service_user
 from student.roles import (
     CourseInstructorRole, CourseStaffRole, GlobalStaff, OrgStaffRole,
     UserBasedRole, CourseCreatorRole, CourseBetaTesterRole, OrgInstructorRole,
@@ -238,6 +238,7 @@ def ensure_user_information(
             user.last_name = data.get('lastname')
             user.is_active = True
             user.save()
+            create_comments_service_user(user)
 
             return {}
         return {'user': user}
@@ -261,6 +262,7 @@ def ensure_user_information(
             user.first_name = data['firstname']
             user.last_name = data['lastname']
             user.save()
+            create_comments_service_user(user)
             
         try:
             user_profile = UserProfile.objects.get(user=user)
