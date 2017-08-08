@@ -9,8 +9,9 @@ from django.contrib.auth.models import User
 
 from social.pipeline import partial
 
+from openedx.core.djangoapps.user_api.models import UserPreference
 from student.views import create_account_with_params, reactivation_email_for_user
-from student.models import UserProfile, CourseAccessRole
+from student.models import UserProfile, CourseAccessRole, create_comments_service_user
 from student.roles import (
     CourseInstructorRole, CourseStaffRole, GlobalStaff, OrgStaffRole,
     UserBasedRole, CourseCreatorRole, CourseBetaTesterRole, OrgInstructorRole,
@@ -35,6 +36,8 @@ AUTH_ENTRY_REGISTER_2 = 'account_register'
 AUTH_ENTRY_LOGIN_API = 'login_api'
 AUTH_ENTRY_REGISTER_API = 'register_api'
 
+# Values from sso that should be checked and pushed at auth
+PREFERENCE_KEY_LIST = ("time_zone",)
 
 def is_api(auth_entry):
     """Returns whether the auth entry point is via an API call."""
@@ -199,7 +202,6 @@ class JsonResponse(HttpResponse):
         )
 
 
-@partial.partial
 def ensure_user_information(
     strategy, auth_entry, backend=None, user=None, social=None,
     allow_inactive_user=False, *args, **kwargs):
@@ -229,13 +231,16 @@ def ensure_user_information(
         try:
             user = User.objects.get(email=data['email'])
         except User.DoesNotExist:
-            create_account_with_params(request, data)
-            user = request.user
+            _provider = data.pop('provider')
+            user = create_account_with_params(request, data)
+            data['provider'] = _provider
             user.first_name = data.get('firstname')
             user.last_name = data.get('lastname')
             user.is_active = True
             user.save()
+            create_comments_service_user(user)
 
+            return {}
         return {'user': user}
 
     if not user:
@@ -257,12 +262,13 @@ def ensure_user_information(
             user.first_name = data['firstname']
             user.last_name = data['lastname']
             user.save()
+            create_comments_service_user(user)
             
         try:
             user_profile = UserProfile.objects.get(user=user)
-        except User.DoesNotExist:
+        except UserProfile.DoesNotExist:
             user_profile = None
-        except User.MultipleObjectsReturned:
+        except UserProfile.MultipleObjectsReturned:
             user_profile = UserProfile.objects.filter(user=user)[0]
 
         if user_profile:
@@ -290,3 +296,30 @@ def ensure_user_information(
             log.error(u'set_roles_for_edx_users error: {}'.format(e))
 
     return response
+
+
+def apply_user_preferences(strategy, *args, **kwargs):
+    """
+    Pushes values from sso to edx as UserPreference according to the PREFERENCE_KEY_LIST
+    """
+    data = kwargs.get('response', False)
+    user = kwargs.get('user', False)
+    if not data:
+        log.error("No data in pipeline 'apply_user_preferences'")
+        return
+    if not user:
+        log.error("No user in pipeline 'apply_user_preferences'")
+        return
+
+    user_preferences = UserPreference.objects.filter(user=user)
+    for key in PREFERENCE_KEY_LIST:
+        up_for_key = user_preferences.filter(key=key).first()
+        if not up_for_key:
+            UserPreference.objects.create(user=user, key=key, value=data[key])
+        elif up_for_key.value != data[key]:
+            if data[key]:
+                up_for_key.value = data[key]
+                up_for_key.save()
+            else:
+                up_for_key.delete()
+    return
