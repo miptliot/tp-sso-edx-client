@@ -62,7 +62,15 @@ def set_roles_for_edx_users(user, permissions, strategy):
     is_global_staff = False
     for role in permissions:
         _log = False
-        if role['obj_type'] == '*':
+        if role['obj_id']:
+            if role['obj_id'].lower() in ["urfu", "misis", "spbstu", "spbu", "msu", "tgu"]:
+                role['obj_id'] = role['obj_id'].lower()
+            if "course-v1:" in role['obj_id']:
+                org_id = role['obj_id'].split(":")[1].split("+")[0]
+                if org_id.lower() != org_id:
+                    if org_id.lower() in ["urfu", "misis", "spbstu", "spbu", "msu", "tgu"]:
+                        role['obj_id'] = "course-v1:{}+{}+{}".format(org_id.lower(), role['obj_id'].split(":")[1].split("+")[1], role['obj_id'].split(":")[1].split("+")[2])
+        if role['obj_type'] == '*' or role['obj_type'] is None:
             if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
                 GlobalStaff().add_users(user)
                 is_global_staff = True
