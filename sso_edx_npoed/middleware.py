@@ -93,6 +93,10 @@ class SeamlessAuthorization(object):
             logout(request)
 
         if request.user.is_authenticated() and not request.user.is_active:
+            user = request.user
+            user.is_active = True
+            user.save()
+            return None
             return sso_logout(request)
 
         return None
