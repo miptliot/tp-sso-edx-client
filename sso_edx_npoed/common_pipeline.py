@@ -1,6 +1,8 @@
 # coding: utf-8
 
+from django.db import transaction
 import requests
+from social.exceptions import AuthForbidden
 
 
 def try_to_set_password(*args, **kwargs):
@@ -15,3 +17,12 @@ def try_to_set_password(*args, **kwargs):
                     user.save()
             except (requests.RequestException, ValueError):
                 pass
+
+
+def check_active_status(*args, **kwargs):
+    user = kwargs.get('user')
+    backend = kwargs.get('backend')
+    if user and not user.is_active and backend and hasattr(backend, 'check_user_active_status') and transaction.get_autocommit():
+        if not backend.check_user_active_status(user).get('active'):
+            raise AuthForbidden(backend)
+        user.is_active = True

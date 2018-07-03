@@ -1,4 +1,4 @@
-# coding: utf8
+# coding: utf-8
 
 import re
 import os.path
@@ -6,15 +6,17 @@ import requests
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
-from django.contrib.auth import REDIRECT_FIELD_NAME, logout
+from django.contrib.auth import REDIRECT_FIELD_NAME, logout, get_user_model
 from django.shortcuts import redirect
 
 from social.apps.django_app.views import auth, NAMESPACE
 from .views import logout as sso_logout
 try:
     from opaque_keys.edx.keys import CourseKey
+    is_edx = True
 except:
     msg = "Oh, it's not edx"
+    is_edx = False
     pass
 
 
@@ -96,8 +98,6 @@ class SeamlessAuthorization(object):
             user = request.user
             user.is_active = True
             user.save()
-            return None
-            return sso_logout(request)
 
         return None
 
