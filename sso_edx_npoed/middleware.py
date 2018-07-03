@@ -94,17 +94,10 @@ class SeamlessAuthorization(object):
             # Logout if user isn't logined on sso except for admin
             logout(request)
 
-        if request.user.is_authenticated():
-            if not is_edx and not request.user.is_active:
-                return sso_logout(request)
-            elif is_edx:
-                try:
-                    # avoiding cache_toolbox.middleware.CacheBackedAuthenticationMiddleware
-                    is_active = get_user_model().objects.get(username=request.user.username).is_active
-                    if not is_active:
-                        return sso_logout(request)
-                except get_user_model().DoesNotExist:
-                    return sso_logout(request)
+        if request.user.is_authenticated() and not request.user.is_active:
+            user = request.user
+            user.is_active = True
+            user.save()
 
         return None
 

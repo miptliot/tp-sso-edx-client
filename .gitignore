@@ -4,3 +4,4 @@ db.sqlite3
 *~
 local_settings.py
 .idea
+npoed_sso_edx_client.egg-info
