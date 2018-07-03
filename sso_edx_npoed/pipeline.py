@@ -7,8 +7,6 @@ import logging
 from django.http import HttpResponseBadRequest, HttpResponse
 from django.contrib.auth.models import User
 
-from social.pipeline import partial
-
 from openedx.core.djangoapps.user_api.models import UserPreference
 from student.views import create_account_with_params, reactivation_email_for_user
 from student.models import UserProfile, CourseAccessRole, create_comments_service_user
@@ -21,6 +19,8 @@ from third_party_auth.pipeline import (
     make_random_password, AuthEntryError
 )
 from opaque_keys.edx.keys import CourseKey
+from opaque_keys import InvalidKeyError
+from collections import OrderedDict
 
 log = logging.getLogger(__name__)
 
@@ -39,135 +39,93 @@ AUTH_ENTRY_REGISTER_API = 'register_api'
 # Values from sso that should be checked and pushed at auth
 PREFERENCE_KEY_LIST = ("time_zone",)
 
+
+class UserRole(object):
+    TYPE_SUPERADMIN = 1
+    TYPE_GLOBAL_ADMIN = 2
+    TYPE_ORG_ADMIN = 3
+    TYPE_ORG_CONTENT_MANAGER = 4
+    TYPE_COURSERUN_AUTHOR = 5
+    TYPE_COURSE_AUTHOR = 6
+    TYPE_BETA_TESTER = 7
+
+    @classmethod
+    def get_role_by_type(cls, role):
+        role_id = int(role['role']['type'])
+
+        try:
+            if role_id in (cls.TYPE_SUPERADMIN, cls.TYPE_GLOBAL_ADMIN):
+                return GlobalStaff, {}, True
+            elif role_id == cls.TYPE_ORG_ADMIN:
+                return OrgStaffRole, OrderedDict([('org', role['obj_id'])]), False
+            elif role_id in (cls.TYPE_COURSERUN_AUTHOR, cls.TYPE_COURSE_AUTHOR):
+                course_key = CourseKey.from_string(role['obj_id'])
+                return CourseInstructorRole, OrderedDict([('course_id', course_key)]), False
+            elif role_id == cls.TYPE_BETA_TESTER:
+                course_key = CourseKey.from_string(role['obj_id'])
+                return CourseBetaTesterRole, OrderedDict([('course_id', course_key)]), False
+        except InvalidKeyError:
+            logging.warning('Can\'t convert {} to the course key'.format(str(role['obj_id'])))
+        return None, {}, False
+
+
 def is_api(auth_entry):
     """Returns whether the auth entry point is via an API call."""
     return (auth_entry == AUTH_ENTRY_LOGIN_API) or (auth_entry == AUTH_ENTRY_REGISTER_API)
 
 
+def _update_role_data(role):
+    orgs = ['urfu', 'misis', 'spbstu', 'spbu', 'msu', 'tgu']
+    course_id_prefix = 'course-v1:'
+
+    obj_id = role['obj_id'].lower()
+    if obj_id in orgs:
+        role['obj_id'] = obj_id
+    if course_id_prefix in role['obj_id']:
+        org_id = role['obj_id'].split(":")[1].split("+")[0]
+        if org_id.lower() != org_id and org_id.lower() in orgs:
+            obj_id_parts = role['obj_id'].split(":")[1].split("+")
+            role['obj_id'] = course_id_prefix + org_id.lower() + '+' + obj_id_parts[1] + '+' + obj_id_parts[2]
+    return role
+
+
 def set_roles_for_edx_users(user, permissions, strategy):
-    '''
+    """
     This function is specific functional for open-edx platform.
     It create roles for edx users from sso permissions.
-    '''
-
-    log_message = 'For User: {}, object_type {} and object_id {} there is not matched Role for Permission set: {}'
-
-    global_perm = {'Read', 'Update', 'Delete', 'Publication', 'Enroll', 'Manage(permissions)'}
-    staff_perm = {'Read', 'Update', 'Delete', 'Publication', 'Enroll'}
-    tester_perm = {'Read', 'Enroll'}
-
+    """
+    was_set_global_staff = False
     role_ids = set(user.courseaccessrole_set.values_list('id', flat=True))
     new_role_ids = []
 
-    is_global_staff = False
     for role in permissions:
-        _log = False
+
         if role['obj_id']:
-            if role['obj_id'].lower() in ["urfu", "misis", "spbstu", "spbu", "msu", "tgu"]:
-                role['obj_id'] = role['obj_id'].lower()
-            if "course-v1:" in role['obj_id']:
-                org_id = role['obj_id'].split(":")[1].split("+")[0]
-                if org_id.lower() != org_id:
-                    if org_id.lower() in ["urfu", "misis", "spbstu", "spbu", "msu", "tgu"]:
-                        role['obj_id'] = "course-v1:{}+{}+{}".format(org_id.lower(), role['obj_id'].split(":")[1].split("+")[1], role['obj_id'].split(":")[1].split("+")[2])
-        if role['obj_type'] == '*' or role['obj_type'] is None:
-            if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
+            role = _update_role_data(role)
+
+        role_class, role_kwargs, is_super_user = UserRole.get_role_by_type(role)
+
+        if is_super_user:
+            if not was_set_global_staff:
                 GlobalStaff().add_users(user)
-                is_global_staff = True
-
-            elif 'Create' in role['obj_perm']:
-                if not CourseCreatorRole().has_user(user):
-                    CourseCreatorRole().add_users(user)
-                car = CourseAccessRole.objects.get(user=user, role=CourseCreatorRole.ROLE)
+                was_set_global_staff = True
+        else:
+            if role_class is not None:
+                role_args = role_kwargs.values()
+                role_obj = role_class(*role_args)
+                if not role_obj.has_user(user):
+                    role_obj.add_users(user)
+                car = CourseAccessRole.objects.get(user=user, role=role_obj._role_name, **role_kwargs)
                 new_role_ids.append(car.id)
+            else:
+                logging.warning('For User: {}, role {}, object_type {} and object_id {} there is not matched '
+                                'Role for Permission set: {}'.format(user.id, str(role['role']), role['obj_type'],
+                                                                     role['obj_id'], str(role['obj_perm'])))
 
-            if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and ['Create'] != role['obj_perm']:
-                _log = True
-
-        elif role['obj_type'] == 'edxorg':
-            if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
-                if not OrgInstructorRole(role['obj_id']).has_user(user):
-                    OrgInstructorRole(role['obj_id']).add_users(user)
-                car = CourseAccessRole.objects.get(user=user,
-                                                   role=OrgInstructorRole(role['obj_id'])._role_name,
-                                                   org=role['obj_id'])
-                new_role_ids.append(car.id)
-
-            elif staff_perm.issubset(set(role['obj_perm'])):
-                if not OrgStaffRole(role['obj_id']).has_user(user):
-                    OrgStaffRole(role['obj_id']).add_users(user)
-                car = CourseAccessRole.objects.get(user=user, role=OrgStaffRole(role['obj_id'])._role_name,
-                                                   org=role['obj_id'])
-                new_role_ids.append(car.id)
-
-            elif 'Read' in role['obj_perm']:
-                if not OrgLibraryUserRole(role['obj_id']).has_user(user):
-                    OrgLibraryUserRole(role['obj_id']).add_users(user)
-                car = CourseAccessRole.objects.get(user=user, role=OrgLibraryUserRole.ROLE, org=role['obj_id'])
-                new_role_ids.append(car.id)
-
-            if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and \
-                    staff_perm != set(role['obj_perm']) and 'Read' not in role['obj_perm']:
-                _log = True
-
-        elif role['obj_type'] in ['edxcourse']:
-
-            course_key = CourseKey.from_string(role['obj_id'])
-
-            if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
-                if not CourseInstructorRole(course_key).has_user(user):
-                    CourseInstructorRole(course_key).add_users(user)
-                car = CourseAccessRole.objects.get(user=user, role=CourseInstructorRole.ROLE, course_id=course_key)
-                new_role_ids.append(car.id)
-
-            elif staff_perm.issubset(set(role['obj_perm'])):
-                if not CourseStaffRole(course_key).has_user(user):
-                    CourseStaffRole(course_key).add_users(user)
-                car = CourseAccessRole.objects.get(user=user, role=CourseStaffRole.ROLE, course_id=course_key)
-                new_role_ids.append(car.id)
-
-            elif tester_perm.issubset(set(role['obj_perm'])):
-                if not CourseBetaTesterRole(course_key).has_user(user):
-                    CourseBetaTesterRole(course_key).add_users(user)
-                car = CourseAccessRole.objects.get(user=user, role=CourseBetaTesterRole.ROLE, course_id=course_key)
-                new_role_ids.append(car.id)
-
-            if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and \
-                staff_perm != set(role['obj_perm']) and tester_perm != set(role['obj_perm']) and 'Read' not in role['obj_perm']:
-                _log = True
-
-        elif role['obj_type'] == 'edxcourserun':
-
-            course_key = CourseKey.from_string(role['obj_id'])
-
-            if '*' in role['obj_perm'] or global_perm.issubset(set(role['obj_perm'])):
-                if not CourseInstructorRole(course_key).has_user(user):
-                    CourseInstructorRole(course_key).add_users(user)
-                car = CourseAccessRole.objects.get(user=user, role=CourseInstructorRole.ROLE, course_id=course_key)
-                new_role_ids.append(car.id)
-            elif staff_perm.issubset(set(role['obj_perm'])):
-                if not CourseStaffRole(course_key).has_user(user):
-                    CourseStaffRole(course_key).add_users(user)
-                car = CourseAccessRole.objects.get(user=user, role=CourseStaffRole.ROLE, course_id=course_key)
-                new_role_ids.append(car.id)
-            elif tester_perm.issubset(set(role['obj_perm'])):
-                if not CourseBetaTesterRole(course_key).has_user(user):
-                    CourseBetaTesterRole(course_key).add_users(user)
-                car = CourseAccessRole.objects.get(user=user, role=CourseBetaTesterRole.ROLE, course_id=course_key)
-                new_role_ids.append(car.id)
-
-            if role['obj_perm'] != '*' and global_perm != set(role['obj_perm']) and \
-                staff_perm != set(role['obj_perm']) and tester_perm != set(role['obj_perm']):
-                _log = True
-
-        if _log:
-            logging.warning(log_message.format(user.id, role['obj_type'], role['obj_id'], str(role['obj_perm'])))
-
-    if (not is_global_staff) and GlobalStaff().has_user(user) and user.id != 1:
+    if (not was_set_global_staff) and GlobalStaff().has_user(user) and user.id != 1:
         GlobalStaff().remove_users(user)
 
     remove_roles = role_ids - set(new_role_ids)
-
     if remove_roles:
         entries = CourseAccessRole.objects.exclude(
             course_id__icontains='library').filter(id__in=list(remove_roles))
