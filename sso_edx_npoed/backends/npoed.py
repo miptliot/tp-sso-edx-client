@@ -17,6 +17,7 @@ DEFAULT_AUTH_PIPELINE = (
     'third_party_auth.pipeline.associate_by_email_if_login_api',
     'social.pipeline.user.get_username',
     'third_party_auth.pipeline.set_pipeline_timeout',
+    'sso_edx_npoed.common_pipeline.check_active_status',
     'sso_edx_npoed.pipeline.ensure_user_information',
     'sso_edx_npoed.common_pipeline.try_to_set_password',
  #   'social.pipeline.user.create_user',
@@ -116,6 +117,15 @@ class NpoedBackend(BaseOAuth2):
         kwargs.update(data)
         kwargs.update({'response': data, 'backend': self})
         return self.strategy.authenticate(*args, **kwargs)
+
+    def check_user_active_status(self, user):
+        component = 'plp' if getattr(self, 'IS_PLP', False) else 'edx'
+        return self.get_json(
+            '{}/users/check-is-active/'.format(settings.SSO_NPOED_URL),
+            data={'component': component, 'username': user.username},
+            headers={'Authorization': 'Token {}'.format(settings.SSO_API_TOKEN)},
+            method='POST',
+        )
 
 
 class NpoedBackendCMS(NpoedBackend):
