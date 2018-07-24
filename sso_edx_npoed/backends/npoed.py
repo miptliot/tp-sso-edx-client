@@ -2,8 +2,8 @@ import logging
 
 from django.conf import settings
 
-from social.utils import handle_http_errors
-from social.backends.oauth import BaseOAuth2
+from social_core.utils import handle_http_errors
+from social_core.backends.oauth import BaseOAuth2
 
 log = logging.getLogger(__name__)
 
@@ -20,7 +20,6 @@ DEFAULT_AUTH_PIPELINE = (
     'sso_edx_npoed.common_pipeline.check_active_status',
     'sso_edx_npoed.pipeline.ensure_user_information',
     'sso_edx_npoed.common_pipeline.try_to_set_password',
- #   'social.pipeline.user.create_user',
     'social.pipeline.social_auth.associate_user',
     'social.pipeline.social_auth.load_extra_data',
     'social.pipeline.user.user_details',
@@ -31,7 +30,6 @@ DEFAULT_AUTH_PIPELINE = (
 
 
 class NpoedBackend(BaseOAuth2):
-
     name = 'sso_npoed-oauth2'
     ID_KEY = 'username'
     AUTHORIZATION_URL = '{}/oauth2/authorize'.format(settings.SSO_NPOED_URL)

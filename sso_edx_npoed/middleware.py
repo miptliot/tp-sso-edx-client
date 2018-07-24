@@ -30,36 +30,22 @@ class SeamlessAuthorization(object):
         backend = settings.SSO_NPOED_BACKEND_NAME
         current_url = request.get_full_path()
 
-        # Special URLs (SSO-299)
-        if '/handler_noauth/' in current_url:
-            return None
+        exluded_paths = ['/handler_noauth', '/xqueue', '/certificates']
+        for exluded_path in exluded_paths:
+            if exluded_path in current_url:
+                return None
 
-        # Special URLs (EDX-310)
-        if '/xqueue/' in current_url:
-            return None
+        special_xblock_urls = getattr(settings, 'SPECIAL_XBLOCK_URLS', [])
 
-        # ITMO url hardcode
-        special_xblock_url = 'courses/course-v1:ITMOUniversity+WEBDEV+fall_2015/xblock/block-v1:ITMOUniversity+WEBDEV+fall_2015+type'
-        if special_xblock_url in current_url:
-            return None
+        for special_xblock_url in special_xblock_urls:
+            if special_xblock_url in current_url:
+                return None
 
-        special_xblock_url = 'courses/course-v1:ITMOUniversity+WEBDEV+spring_2016/xblock/block-v1:ITMOUniversity+WEBDEV+spring_2016+type'
-        if special_xblock_url in current_url:
-            return None
+        special_xblock_two_parts_urls = getattr(settings, 'SPECIAL_XBLOCK_TWO_PARTS_URLS', [])
 
-        # ITMO url hardcode 2
-        course_id_itmo = 'courses/course-v1:ITMOUniversity+'
-        handler_itmo_academy = '/handler/check_lab'
-        if course_id_itmo in current_url and handler_itmo_academy in current_url:
-            return None
-
-        # UrFU url hardcode
-        special_urfu_xblock_url = 'courses/course-v1:urfu+METR+fall_2015/xblock/block-v1:urfu+METR+fall_2015+type'
-        if special_urfu_xblock_url in current_url:
-            return None
-
-        if 'certificates' in current_url:
-            return None
+        for part1, part2 in special_xblock_two_parts_urls:
+            if part1 in current_url and part2 in current_url:
+                return None
 
         # don't work for admin
         in_exclude_path = False
@@ -116,11 +102,12 @@ class PLPRedirection(object):
             start_url = ''
 
         auth_process_urls = ('oauth2', 'auth', 'login_oauth_token', 'social-logout')
-        api_urls = ('certificates', 'api', 'user_api', 'notifier_api', 'update_example_certificate', 'update_certificate', 'request_certificate',)
+        api_urls = ('certificates', 'api', 'user_api', 'notifier_api', 'update_example_certificate',
+                    'update_certificate', 'request_certificate',)
 
         handle_local_urls = (
-            'i18n', 'search', 'verify_student', 'certificates', 'jsi18n', 'course_modes',  '404', '500','i18n.js', 'js', 'sso',
-            'wiki', 'notify', 'courses', 'xblock', 'change_setting', 'account', 'notification_prefs', 'admin',
+            'i18n', 'search', 'verify_student', 'certificates', 'jsi18n', 'course_modes',  '404', '500','i18n.js', 'js',
+            'sso', 'wiki', 'notify', 'courses', 'xblock', 'change_setting', 'account', 'notification_prefs', 'admin',
             'survey', 'event', 'instructor_task_status', 'edinsights_service', 'openassessment', 'instructor_report',
         )
 
@@ -137,7 +124,7 @@ class PLPRedirection(object):
         es_url = re.compile(r'^/courses/(.*)/enroll_staff').match(current_url)
         if es_url:
             r_url = es_url
-        if r_url:
+        if r_url and is_edx:
             course = CourseKey.from_string(r_url.groups()[0])
             # переход к конкретной сессии в plp
             return redirect(
@@ -153,7 +140,7 @@ class PLPRedirection(object):
         if request.path == "/courses/" or request.path == "/courses":
             return redirect(os.path.join(settings.PLP_URL, 'course'))
 
-        if request.path.startswith('/u/') or request.path == "/account/settings/" or request.path == "/account/settings":
+        if request.path.startswith('/u/') or request.path.startswith("/account/settings"):
             return redirect(os.path.join(settings.PLP_URL, 'profile'))
 
         if start_url not in handle_local_urls or is_courses_list_or_about_page:
@@ -183,7 +170,8 @@ class CheckHonorAccepted(object):
             course = check_course.group(2)
             session = check_course.group(3)
             course_id = 'course-v1:%s+%s+%s' % (university, course, session)
-            if request.session.has_key('accepted_honor_codes') and isinstance(request.session['accepted_honor_codes'], dict):
+            if request.session.has_key('accepted_honor_codes') \
+                    and isinstance(request.session['accepted_honor_codes'], dict):
                 if request.session['accepted_honor_codes'].get(course_id):
                     return None
             request_url = os.path.join(settings.PLP_URL, 'api', 'user-accepted-honor-code')
@@ -194,8 +182,11 @@ class CheckHonorAccepted(object):
                               verify=False)
             accepted_honor_code = r.json()['honor']
             if not accepted_honor_code:
-                return redirect(os.path.join(settings.PLP_URL, 'course/{}/{}?session={}'.format(university, course, session)))
-            if request.session.has_key('accepted_honor_codes') and isinstance(request.session['accepted_honor_codes'], dict):
+                return redirect(
+                    os.path.join(settings.PLP_URL, 'course/{}/{}?session={}'.format(university, course, session))
+                )
+            if request.session.has_key('accepted_honor_codes') \
+                    and isinstance(request.session['accepted_honor_codes'], dict):
                 request.session['accepted_honor_codes'][course_id] = True
             else:
                 request.session['accepted_honor_codes'] = {course_id: True}

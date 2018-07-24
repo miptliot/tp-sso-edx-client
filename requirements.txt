@@ -1,2 +1,2 @@
-python-social-auth==0.2.11
-
+social-auth-app-django==1.2.0
+social-auth-core==1.4.0
