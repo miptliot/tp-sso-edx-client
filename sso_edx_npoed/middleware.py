@@ -6,17 +6,18 @@ import requests
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
-from django.contrib.auth import REDIRECT_FIELD_NAME, logout, get_user_model
+from django.contrib.auth import REDIRECT_FIELD_NAME, logout
 from django.shortcuts import redirect
 
-from social.apps.django_app.views import auth, NAMESPACE
-from .views import logout as sso_logout
+from social_django.views import auth, NAMESPACE
+
 try:
     from opaque_keys.edx.keys import CourseKey
     is_edx = True
-except:
+except ImportError:
     msg = "Oh, it's not edx"
     is_edx = False
+    CourseKey = None
     pass
 
 
