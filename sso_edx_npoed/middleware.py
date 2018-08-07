@@ -5,11 +5,21 @@ import os.path
 import requests
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 from django.contrib.auth import REDIRECT_FIELD_NAME, logout, get_user_model
 from django.shortcuts import redirect
+try:
+    from django.utils.deprecation import MiddlewareMixin
+except ImportError:
+    MiddlewareMixin = object
 
-from social.apps.django_app.views import auth, NAMESPACE
+try:
+    from social.apps.django_app.views import auth, NAMESPACE
+except ImportError:
+    from social_django.views import auth, NAMESPACE
 from .views import logout as sso_logout
 try:
     from opaque_keys.edx.keys import CourseKey
@@ -20,7 +30,13 @@ except:
     pass
 
 
-class SeamlessAuthorization(object):
+def is_authenticated(user):
+    if callable(user.is_authenticated):
+        return user.is_authenticated()
+    return user.is_authenticated
+
+
+class SeamlessAuthorization(MiddlewareMixin):
     cookie_name = 'authenticated'
 
     def process_request(self, request):
@@ -75,7 +91,7 @@ class SeamlessAuthorization(object):
         auth_cookie = (auth_cookie in ('1', 'true', 'ok'))
         continue_url = reverse('{0}:complete'.format(NAMESPACE),
                                args=(backend,))
-        is_auth = request.user.is_authenticated()
+        is_auth = is_authenticated(request.user)
         # TODO: Need to uncomment after fix PLP
         is_same_user = (request.user.username == auth_cookie_user)
 
@@ -99,10 +115,21 @@ class SeamlessAuthorization(object):
             user.is_active = True
             user.save()
 
+        if is_authenticated(request.user):
+            if not is_edx and not request.user.is_active:
+                return sso_logout(request)
+            elif is_edx:
+                try:
+                    # avoiding cache_toolbox.middleware.CacheBackedAuthenticationMiddleware
+                    is_active = get_user_model().objects.get(username=request.user.username).is_active
+                    if not is_active:
+                        return sso_logout(request)
+                except get_user_model().DoesNotExist:
+                    return sso_logout(request)
         return None
 
 
-class PLPRedirection(object):
+class PLPRedirection(MiddlewareMixin):
 
     def process_request(self, request):
         """
@@ -163,13 +190,13 @@ class PLPRedirection(object):
                     plp_url = plp_url[:-1]
                 return redirect("%s%s" % (plp_url, current_url))
 
-        is_auth = request.user.is_authenticated()
+        is_auth = is_authenticated(request.user)
         if not is_auth and start_url not in auth_process_urls and \
                 start_url not in api_urls:
             request.session['force_auth'] = True
 
 
-class CheckHonorAccepted(object):
+class CheckHonorAccepted(MiddlewareMixin):
 
     def process_request(self, request):
         current_url = request.get_full_path()
@@ -178,12 +205,12 @@ class CheckHonorAccepted(object):
         check_course = re.search(course_pattern, current_url)
         check_pages = re.search(course_pages, current_url)
 
-        if check_course and check_course.group() and check_pages and request.user.is_authenticated():
+        if check_course and check_course.group() and check_pages and is_authenticated(request.user):
             university = check_course.group(1)
             course = check_course.group(2)
             session = check_course.group(3)
             course_id = 'course-v1:%s+%s+%s' % (university, course, session)
-            if request.session.has_key('accepted_honor_codes') and isinstance(request.session['accepted_honor_codes'], dict):
+            if 'accepted_honor_codes' in request.session and isinstance(request.session['accepted_honor_codes'], dict):
                 if request.session['accepted_honor_codes'].get(course_id):
                     return None
             request_url = os.path.join(settings.PLP_URL, 'api', 'user-accepted-honor-code')
@@ -195,7 +222,7 @@ class CheckHonorAccepted(object):
             accepted_honor_code = r.json()['honor']
             if not accepted_honor_code:
                 return redirect(os.path.join(settings.PLP_URL, 'course/{}/{}?session={}'.format(university, course, session)))
-            if request.session.has_key('accepted_honor_codes') and isinstance(request.session['accepted_honor_codes'], dict):
+            if 'accepted_honor_codes' in request.session and isinstance(request.session['accepted_honor_codes'], dict):
                 request.session['accepted_honor_codes'][course_id] = True
             else:
                 request.session['accepted_honor_codes'] = {course_id: True}
