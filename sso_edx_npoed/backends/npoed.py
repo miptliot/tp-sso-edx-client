@@ -24,10 +24,11 @@ DEFAULT_AUTH_PIPELINE = (
     'sso_edx_npoed.common_pipeline.check_active_status',
     'sso_edx_npoed.pipeline.ensure_user_information',
     'sso_edx_npoed.common_pipeline.try_to_set_password',
-    'social.pipeline.user.create_user',
+ #   'social.pipeline.user.create_user',
     'social.pipeline.social_auth.associate_user',
     'social.pipeline.social_auth.load_extra_data',
     'social.pipeline.user.user_details',
+    'sso_edx_npoed.pipeline.apply_user_preferences',
     'third_party_auth.pipeline.set_logged_in_cookies',
     'third_party_auth.pipeline.login_analytics',
 )

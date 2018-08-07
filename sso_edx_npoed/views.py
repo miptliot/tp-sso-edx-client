@@ -1,6 +1,7 @@
 # coding: utf-8
 
 import logging
+import urllib
 
 from django.conf import settings
 from django.contrib.auth import REDIRECT_FIELD_NAME
@@ -34,6 +35,9 @@ def logout(request, next_page=None,
         next_page = request.build_absolute_uri(next_page)
     else:
         next_page = request.build_absolute_uri('/')
+
+    if next_page:
+        next_page = urllib.quote(next_page)
 
     return redirect('%s?%s=%s' % (settings.SOCIAL_AUTH_LOGOUT_URL,
                                       redirect_field_name, next_page))

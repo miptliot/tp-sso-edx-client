@@ -110,6 +110,11 @@ class SeamlessAuthorization(MiddlewareMixin):
             # Logout if user isn't logined on sso except for admin
             logout(request)
 
+        if request.user.is_authenticated() and not request.user.is_active:
+            user = request.user
+            user.is_active = True
+            user.save()
+
         if is_authenticated(request.user):
             if not is_edx and not request.user.is_active:
                 return sso_logout(request)
@@ -121,7 +126,6 @@ class SeamlessAuthorization(MiddlewareMixin):
                         return sso_logout(request)
                 except get_user_model().DoesNotExist:
                     return sso_logout(request)
-
         return None
 
 
