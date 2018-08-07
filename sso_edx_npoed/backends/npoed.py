@@ -2,8 +2,12 @@ import logging
 
 from django.conf import settings
 
-from social.utils import handle_http_errors
-from social.backends.oauth import BaseOAuth2
+try:
+    from social_core.utils import handle_http_errors
+    from social_core.backends.oauth import BaseOAuth2
+except ImportError:
+    from social.utils import handle_http_errors
+    from social.backends.oauth import BaseOAuth2
 
 log = logging.getLogger(__name__)
 
