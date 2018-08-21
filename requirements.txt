@@ -1,2 +1,3 @@
-social-auth-app-django==1.2.0
-social-auth-core==1.4.0
+# requirements alraedy specified in the edx-platform repo
+#social-auth-app-django==1.2.0
+#social-auth-core==1.4.0
