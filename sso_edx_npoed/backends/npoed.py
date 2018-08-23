@@ -45,6 +45,10 @@ class NpoedBackend(BaseOAuth2):
     DEFAULT_SCOPE = []
     REDIRECT_STATE = False
     ACCESS_TOKEN_METHOD = 'POST'
+    EXTRA_DATA = [
+        ('refresh_token', 'refresh_token', True),
+        ('expires_in', 'expires'),
+    ]
 
     PIPELINE = DEFAULT_AUTH_PIPELINE
     skip_email_verification = True
@@ -145,7 +149,9 @@ class NpoedBackend(BaseOAuth2):
         data = self.user_data(access_token, request=request)
         data['access_token'] = access_token
         kwargs.update(data)
-        kwargs.update({'response': data, 'backend': self})
+        response = kwargs.get('response') or {}
+        response.update(data)
+        kwargs.update({'response': response, 'backend': self})
         return self.strategy.authenticate(*args, **kwargs)
 
     def check_user_active_status(self, user):
