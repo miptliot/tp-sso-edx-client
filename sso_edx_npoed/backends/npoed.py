@@ -1,3 +1,4 @@
+import json
 import logging
 
 from django.conf import settings
@@ -44,9 +45,33 @@ class NpoedBackend(BaseOAuth2):
     DEFAULT_SCOPE = []
     REDIRECT_STATE = False
     ACCESS_TOKEN_METHOD = 'POST'
+    EXTRA_DATA = [
+        ('refresh_token', 'refresh_token', True),
+        ('expires_in', 'expires'),
+    ]
 
     PIPELINE = DEFAULT_AUTH_PIPELINE
     skip_email_verification = True
+
+    def _get_info_from_request(self, request, post_param_name):
+        if not request or request.method != 'POST':
+            return None
+
+        plp_api_key = getattr(settings, 'PLP_API_KEY', None)
+        edx_api_key = getattr(settings, 'EDX_API_KEY', None)
+        if not plp_api_key and not edx_api_key:
+            return None
+
+        plp_key = request.META.get('HTTP_X_PLP_API_KEY')
+        edx_key = request.META.get('HTTP_X_EDX_API_KEY')
+        if not plp_key and not edx_key:
+            return None
+
+        if (plp_api_key and plp_api_key == plp_key) or (edx_api_key and edx_api_key == edx_key):
+            post_param_value = request.POST.get(post_param_name)
+            if post_param_value:
+                return post_param_value
+        return None
 
     def setting(self, name, default=None):
         """Return setting value from strategy"""
@@ -100,6 +125,10 @@ class NpoedBackend(BaseOAuth2):
 
     def user_data(self, access_token, *args, **kwargs):
         """ Grab user profile information from SSO. """
+        request = kwargs.get('request')
+        user_info = self._get_info_from_request(request, 'user_info')
+        if user_info:
+            return json.loads(user_info)
         return self.get_json(
             '{}/users/me'.format(settings.SSO_NPOED_URL),
             params={'access_token': access_token},
@@ -116,10 +145,13 @@ class NpoedBackend(BaseOAuth2):
 
     def do_auth(self, access_token, *args, **kwargs):
         """Finish the auth process once the access_token was retrieved"""
-        data = self.user_data(access_token)
+        request = self.strategy.request
+        data = self.user_data(access_token, request=request)
         data['access_token'] = access_token
         kwargs.update(data)
-        kwargs.update({'response': data, 'backend': self})
+        response = kwargs.get('response') or {}
+        response.update(data)
+        kwargs.update({'response': response, 'backend': self})
         return self.strategy.authenticate(*args, **kwargs)
 
     def check_user_active_status(self, user):
