@@ -110,7 +110,7 @@ class SeamlessAuthorization(MiddlewareMixin):
             # Logout if user isn't logined on sso except for admin
             logout(request)
 
-        if request.user.is_authenticated() and not request.user.is_active:
+        if is_authenticated(request.user) and not request.user.is_active:
             user = request.user
             user.is_active = True
             user.save()
