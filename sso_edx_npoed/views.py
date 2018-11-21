@@ -12,6 +12,11 @@ from rest_framework import permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
+try:
+    from urllib import quote
+except ImportError:
+    from urllib.parse import quote
+
 User = get_user_model()
 
 try:
@@ -37,7 +42,7 @@ def logout(request, next_page=None,
         next_page = request.build_absolute_uri('/')
 
     if next_page:
-        next_page = urllib.quote(next_page)
+        next_page = quote(next_page.encode('utf8'))
 
     return redirect('%s?%s=%s' % (settings.SOCIAL_AUTH_LOGOUT_URL,
                                       redirect_field_name, next_page))
