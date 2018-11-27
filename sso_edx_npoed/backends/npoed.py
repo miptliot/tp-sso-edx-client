@@ -44,6 +44,7 @@ class NpoedBackend(BaseOAuth2):
     USER_DATA_URL = '{url}/oauth2/access_token/{access_token}/'
     DEFAULT_SCOPE = []
     REDIRECT_STATE = False
+    REDIRECT_IS_HTTPS = getattr(settings, 'URL_PREFIX', 'https') == 'https'
     ACCESS_TOKEN_METHOD = 'POST'
     EXTRA_DATA = [
         ('refresh_token', 'refresh_token', True),
