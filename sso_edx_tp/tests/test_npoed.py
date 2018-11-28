@@ -1,4 +1,4 @@
-"""Integration tests for Npoed providers."""
+"""Integration tests for Tp providers."""
 import mock
 
 from social import actions, exceptions
@@ -9,25 +9,25 @@ from third_party_auth.tests.specs import base
 from third_party_auth import pipeline
 
 
-class NpoedOauth2IntegrationTest(base.Oauth2IntegrationTest):
-    """Integration tests for provider.NpoedOauth2."""
+class TpOauth2IntegrationTest(base.Oauth2IntegrationTest):
+    """Integration tests for provider.TpOauth2."""
 
     @classmethod
-    def configure_npoed_provider(cls, **kwargs):
-        """ Update the settings for the Npoed third party auth provider/backend """
-        kwargs.setdefault("name", "Npoed")
-        kwargs.setdefault("backend_name", "sso_npoed-oauth2")
+    def configure_tp_provider(cls, **kwargs):
+        """ Update the settings for the Tp third party auth provider/backend """
+        kwargs.setdefault("name", "Tp")
+        kwargs.setdefault("backend_name", "sso_tp-oauth2")
         kwargs.setdefault("icon_class", "fa-sing-in")
-        kwargs.setdefault("key", "test-fake-key.apps.npoed")
+        kwargs.setdefault("key", "test-fake-key.apps.tp")
         kwargs.setdefault("secret", "opensesame")
         return cls.configure_oauth_provider(**kwargs)
 
     def setUp(self):
-        super(NpoedOauth2IntegrationTest, self).setUp()
-        self.provider = self.configure_npoed_provider(
+        super(TpOauth2IntegrationTest, self).setUp()
+        self.provider = self.configure_tp_provider(
             enabled=True,
-            key='npoed_oauth2_key',
-            secret='npoed_oauth2_secret',
+            key='tp_oauth2_key',
+            secret='tp_oauth2_secret',
         )
 
     TOKEN_RESPONSE_DATA = {

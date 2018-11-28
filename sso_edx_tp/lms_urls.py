@@ -10,5 +10,5 @@ urlpatterns = patterns(
     url(r'^404$', handler404),
     url(r'^500$', handler500),
     url(r'', include('lms.urls')),
-    url(r'^social-logout', 'sso_edx_npoed.views.logout', name='social-logout'),
+    url(r'^social-logout', 'sso_edx_tp.views.logout', name='social-logout'),
 )

@@ -22,25 +22,25 @@ DEFAULT_AUTH_PIPELINE = (
     'third_party_auth.pipeline.associate_by_email_if_login_api',
     'social.pipeline.user.get_username',
     'third_party_auth.pipeline.set_pipeline_timeout',
-    'sso_edx_npoed.common_pipeline.check_active_status',
-    'sso_edx_npoed.pipeline.ensure_user_information',
-    'sso_edx_npoed.common_pipeline.try_to_set_password',
+    'sso_edx_tp.common_pipeline.check_active_status',
+    'sso_edx_tp.pipeline.ensure_user_information',
+    'sso_edx_tp.common_pipeline.try_to_set_password',
  #   'social.pipeline.user.create_user',
     'social.pipeline.social_auth.associate_user',
     'social.pipeline.social_auth.load_extra_data',
     'social.pipeline.user.user_details',
-    'sso_edx_npoed.pipeline.apply_user_preferences',
+    'sso_edx_tp.pipeline.apply_user_preferences',
     'third_party_auth.pipeline.set_logged_in_cookies',
     'third_party_auth.pipeline.login_analytics',
 )
 
 
-class NpoedBackend(BaseOAuth2):
+class TpBackend(BaseOAuth2):
 
-    name = 'sso_npoed-oauth2'
+    name = 'sso_tp-oauth2'
     ID_KEY = 'username'
-    AUTHORIZATION_URL = '{}/oauth2/authorize'.format(settings.SSO_NPOED_URL)
-    ACCESS_TOKEN_URL = '{}/oauth2/access_token'.format(settings.SSO_NPOED_URL)
+    AUTHORIZATION_URL = '{}/oauth2/authorize'.format(settings.SSO_TP_URL)
+    ACCESS_TOKEN_URL = '{}/oauth2/access_token'.format(settings.SSO_TP_URL)
     USER_DATA_URL = '{url}/oauth2/access_token/{access_token}/'
     DEFAULT_SCOPE = []
     REDIRECT_STATE = False
@@ -89,7 +89,7 @@ class NpoedBackend(BaseOAuth2):
                 return provider_config.get_setting(name)
             except KeyError:
                 pass
-        return super(NpoedBackend, self).setting(name, default=default)
+        return super(TpBackend, self).setting(name, default=default)
 
     def auth_url(self):
         '''
@@ -98,7 +98,7 @@ class NpoedBackend(BaseOAuth2):
         on sso-provider.
         '''
         return '{}&auth_entry={}'.format(
-            super(NpoedBackend, self).auth_url(),
+            super(TpBackend, self).auth_url(),
             self.data.get('auth_entry', 'login')
         )
 
@@ -109,14 +109,14 @@ class NpoedBackend(BaseOAuth2):
                                          self.data.get('state'))
         next_url = getattr(settings, 'SOCIAL_NEXT_URL', '/home')
         self.strategy.session.setdefault('next', next_url)
-        return super(NpoedBackend, self).auth_complete(*args, **kwargs)
+        return super(TpBackend, self).auth_complete(*args, **kwargs)
 
     def pipeline(self, pipeline, pipeline_index=0, *args, **kwargs):
         """
         Hack for using in open edx our custom DEFAULT_AUTH_PIPELINE
         """
         self.strategy.session.setdefault('auth_entry', 'register')
-        return super(NpoedBackend, self).pipeline(
+        return super(TpBackend, self).pipeline(
             pipeline=self.PIPELINE, pipeline_index=pipeline_index, *args, **kwargs
         )
 
@@ -131,14 +131,14 @@ class NpoedBackend(BaseOAuth2):
         if user_info:
             return json.loads(user_info)
         return self.get_json(
-            '{}/users/me'.format(settings.SSO_NPOED_URL),
+            '{}/users/me'.format(settings.SSO_TP_URL),
             params={'access_token': access_token},
             headers={'Authorization': 'Bearer {}'.format(access_token)},
         )
 
     def get_password_hash(self, access_token, *args, **kwargs):
         return self.get_json(
-            '{}/users/get_hash'.format(settings.SSO_NPOED_URL),
+            '{}/users/get_hash'.format(settings.SSO_TP_URL),
             params={'access_token': access_token},
             headers={'Authorization': 'Bearer {}'.format(access_token)},
             method='POST',
@@ -158,19 +158,19 @@ class NpoedBackend(BaseOAuth2):
     def check_user_active_status(self, user):
         component = 'plp' if getattr(self, 'IS_PLP', False) else 'edx'
         return self.get_json(
-            '{}/users/check-is-active/'.format(settings.SSO_NPOED_URL),
+            '{}/users/check-is-active/'.format(settings.SSO_TP_URL),
             data={'component': component, 'username': user.username},
             headers={'Authorization': 'Token {}'.format(settings.SSO_API_TOKEN)},
             method='POST',
         )
 
 
-class NpoedBackendCMS(NpoedBackend):
+class TpBackendCMS(TpBackend):
     """
     Clone Backend for using in studio (cms).
     We need different auth backend for cms and lms
     """
-    name = 'sso_npoed_cms-oauth2'
+    name = 'sso_tp_cms-oauth2'
 
     def get_user(self, user_id):
         try:
@@ -179,4 +179,4 @@ class NpoedBackendCMS(NpoedBackend):
             user = User.objects.get(id=user_id)
             return user
         except:
-            return super(NpoedBackend, self).get_user(user_id)
+            return super(TpBackend, self).get_user(user_id)

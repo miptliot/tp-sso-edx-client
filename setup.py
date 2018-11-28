@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 
 setup(
-    name='npoed-sso-edx-client',
+    name='tp-sso-edx-client',
     version='1.0',
     description='Client OAuth2 from edX installations',
     author='edX',
