@@ -72,7 +72,7 @@ def create_forum_roles_and_permissions_for_cours(course):
 
     For example:
 
-    >>> from sso_edx_npoed.utils import create_forum_roles_and_permissions_for_cours
+    >>> from sso_edx_tp.utils import create_forum_roles_and_permissions_for_cours
     >>> create_forum_roles_and_permissions_for_cours('edX/DemoX/Demo_Course')
     ...
 
