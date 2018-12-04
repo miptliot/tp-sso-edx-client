@@ -1,0 +1,11 @@
+# coding: utf8
+
+
+class BaseUserRole(object):
+    TYPE_SUPERADMIN = 1
+    TYPE_GLOBAL_ADMIN = 2
+    TYPE_ORG_ADMIN = 3
+    TYPE_ORG_CONTENT_MANAGER = 4
+    TYPE_COURSERUN_AUTHOR = 5
+    TYPE_COURSE_AUTHOR = 6
+    TYPE_BETA_TESTER = 7

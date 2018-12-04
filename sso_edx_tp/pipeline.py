@@ -21,6 +21,7 @@ from third_party_auth.pipeline import (
 from opaque_keys.edx.keys import CourseKey
 from opaque_keys import InvalidKeyError
 from collections import OrderedDict
+from .roles import BaseUserRole
 
 log = logging.getLogger(__name__)
 
@@ -40,15 +41,7 @@ AUTH_ENTRY_REGISTER_API = 'register_api'
 PREFERENCE_KEY_LIST = ("time_zone",)
 
 
-class UserRole(object):
-    TYPE_SUPERADMIN = 1
-    TYPE_GLOBAL_ADMIN = 2
-    TYPE_ORG_ADMIN = 3
-    TYPE_ORG_CONTENT_MANAGER = 4
-    TYPE_COURSERUN_AUTHOR = 5
-    TYPE_COURSE_AUTHOR = 6
-    TYPE_BETA_TESTER = 7
-
+class UserRole(BaseUserRole):
     @classmethod
     def get_role_by_type(cls, role):
         role_id = int(role['role']['type'])
@@ -229,7 +222,7 @@ def ensure_user_information(
             user.last_name = data['lastname']
             user.save()
             create_comments_service_user(user)
-            
+
         try:
             user_profile = UserProfile.objects.get(user=user)
         except UserProfile.DoesNotExist:
