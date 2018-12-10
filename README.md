@@ -1,2 +1,2 @@
-# npoed-sso-edx-client
+# tp-sso-edx-client
 Client for edX SSO provider
