@@ -115,8 +115,10 @@ class PLPRedirection(object):
         handle_local_urls += auth_process_urls + api_urls
 
         if settings.DEBUG:
-            debug_handle_local_urls = ('debug', settings.STATIC_URL, settings.MEDIA_URL)
+            debug_handle_local_urls = ('debug', settings.STATIC_URL, )
             handle_local_urls += debug_handle_local_urls
+        
+        handle_local_urls += (settings.MEDIA_URL, )
 
         if request.path == "/dashboard/" or request.path == "/dashboard":
             return redirect(os.path.join(settings.PLP_URL, 'my'))
