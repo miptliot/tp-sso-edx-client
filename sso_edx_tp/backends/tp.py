@@ -3,32 +3,27 @@ import logging
 
 from django.conf import settings
 
-try:
-    from social_core.utils import handle_http_errors
-    from social_core.backends.oauth import BaseOAuth2
-except ImportError:
-    from social.utils import handle_http_errors
-    from social.backends.oauth import BaseOAuth2
+from social_core.utils import handle_http_errors
+from social_core.backends.oauth import BaseOAuth2
 
 log = logging.getLogger(__name__)
 
 
 DEFAULT_AUTH_PIPELINE = (
     'third_party_auth.pipeline.parse_query_params',
-    'social.pipeline.social_auth.social_details',
-    'social.pipeline.social_auth.social_uid',
-    'social.pipeline.social_auth.auth_allowed',
-    'social.pipeline.social_auth.social_user',
+    'social_core.pipeline.social_auth.social_details',
+    'social_core.pipeline.social_auth.social_uid',
+    'social_core.pipeline.social_auth.auth_allowed',
+    'social_core.pipeline.social_auth.social_user',
     'third_party_auth.pipeline.associate_by_email_if_login_api',
-    'social.pipeline.user.get_username',
+    'social_core.pipeline.user.get_username',
     'third_party_auth.pipeline.set_pipeline_timeout',
     'sso_edx_tp.common_pipeline.check_active_status',
     'sso_edx_tp.pipeline.ensure_user_information',
     'sso_edx_tp.common_pipeline.try_to_set_password',
- #   'social.pipeline.user.create_user',
-    'social.pipeline.social_auth.associate_user',
-    'social.pipeline.social_auth.load_extra_data',
-    'social.pipeline.user.user_details',
+    'social_core.pipeline.social_auth.associate_user',
+    'social_core.pipeline.social_auth.load_extra_data',
+    'social_core.pipeline.user.user_details',
     'sso_edx_tp.pipeline.apply_user_preferences',
     'third_party_auth.pipeline.set_logged_in_cookies',
     'third_party_auth.pipeline.login_analytics',
@@ -36,7 +31,6 @@ DEFAULT_AUTH_PIPELINE = (
 
 
 class TpBackend(BaseOAuth2):
-
     name = 'sso_tp-oauth2'
     ID_KEY = 'username'
     AUTHORIZATION_URL = '{}/oauth2/authorize'.format(settings.SSO_TP_URL)

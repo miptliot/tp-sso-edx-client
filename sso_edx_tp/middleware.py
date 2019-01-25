@@ -5,10 +5,12 @@ import os.path
 import requests
 
 from django.conf import settings
+
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
     from django.urls import reverse
+
 from django.contrib.auth import REDIRECT_FIELD_NAME, logout, get_user_model
 from django.shortcuts import redirect
 try:
@@ -16,17 +18,16 @@ try:
 except ImportError:
     MiddlewareMixin = object
 
-try:
-    from social.apps.django_app.views import auth, NAMESPACE
-except ImportError:
-    from social_django.views import auth, NAMESPACE
 from .views import logout as sso_logout
+from social_django.views import auth, NAMESPACE
+
 try:
     from opaque_keys.edx.keys import CourseKey
     is_edx = True
-except:
+except ImportError:
     msg = "Oh, it's not edx"
     is_edx = False
+    CourseKey = None
     pass
 
 
@@ -46,36 +47,22 @@ class SeamlessAuthorization(MiddlewareMixin):
         backend = settings.SSO_TP_BACKEND_NAME
         current_url = request.get_full_path()
 
-        # Special URLs (SSO-299)
-        if '/handler_noauth/' in current_url:
-            return None
+        exluded_paths = ['/handler_noauth', '/xqueue', '/certificates']
+        for exluded_path in exluded_paths:
+            if exluded_path in current_url:
+                return None
 
-        # Special URLs (EDX-310)
-        if '/xqueue/' in current_url:
-            return None
+        special_xblock_urls = getattr(settings, 'SPECIAL_XBLOCK_URLS', [])
 
-        # ITMO url hardcode
-        special_xblock_url = 'courses/course-v1:ITMOUniversity+WEBDEV+fall_2015/xblock/block-v1:ITMOUniversity+WEBDEV+fall_2015+type'
-        if special_xblock_url in current_url:
-            return None
+        for special_xblock_url in special_xblock_urls:
+            if special_xblock_url in current_url:
+                return None
 
-        special_xblock_url = 'courses/course-v1:ITMOUniversity+WEBDEV+spring_2016/xblock/block-v1:ITMOUniversity+WEBDEV+spring_2016+type'
-        if special_xblock_url in current_url:
-            return None
+        special_xblock_two_parts_urls = getattr(settings, 'SPECIAL_XBLOCK_TWO_PARTS_URLS', [])
 
-        # ITMO url hardcode 2
-        course_id_itmo = 'courses/course-v1:ITMOUniversity+'
-        handler_itmo_academy = '/handler/check_lab'
-        if course_id_itmo in current_url and handler_itmo_academy in current_url:
-            return None
-
-        # UrFU url hardcode
-        special_urfu_xblock_url = 'courses/course-v1:urfu+METR+fall_2015/xblock/block-v1:urfu+METR+fall_2015+type'
-        if special_urfu_xblock_url in current_url:
-            return None
-
-        if 'certificates' in current_url:
-            return None
+        for part1, part2 in special_xblock_two_parts_urls:
+            if part1 in current_url and part2 in current_url:
+                return None
 
         # don't work for admin
         in_exclude_path = False
@@ -143,19 +130,22 @@ class PLPRedirection(MiddlewareMixin):
             start_url = ''
 
         auth_process_urls = ('oauth2', 'auth', 'login_oauth_token', 'social-logout')
-        api_urls = ('certificates', 'api', 'user_api', 'notifier_api', 'update_example_certificate', 'update_certificate', 'request_certificate',)
+        api_urls = ('certificates', 'api', 'user_api', 'notifier_api', 'update_example_certificate',
+                    'update_certificate', 'request_certificate',)
 
         handle_local_urls = (
-            'i18n', 'search', 'verify_student', 'certificates', 'jsi18n', 'course_modes',  '404', '500','i18n.js', 'js', 'sso',
-            'wiki', 'notify', 'courses', 'xblock', 'change_setting', 'account', 'notification_prefs', 'admin',
+            'i18n', 'search', 'verify_student', 'certificates', 'jsi18n', 'course_modes',  '404', '500','i18n.js', 'js',
+            'sso', 'wiki', 'notify', 'courses', 'xblock', 'change_setting', 'account', 'notification_prefs', 'admin',
             'survey', 'event', 'instructor_task_status', 'edinsights_service', 'openassessment', 'instructor_report',
         )
 
         handle_local_urls += auth_process_urls + api_urls
 
         if settings.DEBUG:
-            debug_handle_local_urls = ('debug', settings.STATIC_URL, settings.MEDIA_URL)
+            debug_handle_local_urls = ('debug', settings.STATIC_URL, )
             handle_local_urls += debug_handle_local_urls
+        
+        handle_local_urls += (settings.MEDIA_URL, )
 
         if request.path == "/dashboard/" or request.path == "/dashboard":
             return redirect(os.path.join(settings.PLP_URL, 'my'))
@@ -164,7 +154,7 @@ class PLPRedirection(MiddlewareMixin):
         es_url = re.compile(r'^/courses/(.*)/enroll_staff').match(current_url)
         if es_url:
             r_url = es_url
-        if r_url:
+        if r_url and is_edx:
             course = CourseKey.from_string(r_url.groups()[0])
             # переход к конкретной сессии в plp
             return redirect(
@@ -180,7 +170,7 @@ class PLPRedirection(MiddlewareMixin):
         if request.path == "/courses/" or request.path == "/courses":
             return redirect(os.path.join(settings.PLP_URL, 'course'))
 
-        if request.path.startswith('/u/') or request.path == "/account/settings/" or request.path == "/account/settings":
+        if request.path.startswith('/u/') or request.path.startswith("/account/settings"):
             return redirect(os.path.join(settings.PLP_URL, 'profile'))
 
         if start_url not in handle_local_urls or is_courses_list_or_about_page:
