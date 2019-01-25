@@ -180,8 +180,8 @@ def ensure_user_information(
         """Force user creation on login or register"""
 
         request = strategy.request
-        data['terms_of_service'] = True
-        data['honor_code'] = True
+        data['terms_of_service'] = 'true'
+        data['honor_code'] = 'true'
         data['password'] = make_random_password()
         # force name creation if it is empty in sso-profile
         data['name'] = ' '.join([data.get('firstname', ''),
