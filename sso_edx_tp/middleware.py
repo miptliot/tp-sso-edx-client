@@ -40,6 +40,23 @@ def is_authenticated(user):
 class SeamlessAuthorization(MiddlewareMixin):
     cookie_name = 'authenticated'
 
+    def should_authenticate(self, request):
+        current_url = request.get_full_path()
+        if current_url:
+            start_url =  current_url.split('?')[0].split('/')[1]
+        else:
+            start_url = ''
+
+        auth_process_urls = ('oauth2', 'auth', 'login_oauth_token', 'social-logout')
+        api_urls = ('certificates', 'api', 'user_api', 'notifier_api', 'update_example_certificate',
+                    'update_certificate', 'request_certificate',)
+
+        is_auth = is_authenticated(request.user)
+        if not is_auth and start_url not in auth_process_urls and \
+                start_url not in api_urls:
+            return True
+        return False
+
     def process_request(self, request):
         """
         Check multidomain cookie and if user is authenticated on sso, login it on edx
@@ -86,6 +103,7 @@ class SeamlessAuthorization(MiddlewareMixin):
         is_continue = (continue_url in current_url)
 
         if (auth_cookie and not is_continue and (not is_auth or not is_same_user)) or \
+                self.should_authenticate(request) or \
                 ('force_auth' in request.session and request.session.pop('force_auth')):
             query_dict = request.GET.copy()
             query_dict[REDIRECT_FIELD_NAME] = current_url

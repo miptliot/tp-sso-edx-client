@@ -106,6 +106,7 @@ def set_roles_for_edx_users(user, permissions, strategy):
             if role_class is not None:
                 role_args = role_kwargs.values()
                 role_obj = role_class(*role_args)
+
                 if not role_obj.has_user(user):
                     role_obj.add_users(user)
                     if role_class is CourseBetaTesterRole and not CourseEnrollment.objects.\

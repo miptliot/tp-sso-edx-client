@@ -1,10 +1,15 @@
+# coding: utf-8
+
 import json
 import logging
 
 from django.conf import settings
+from django.contrib.sites.models import Site
 
 from social_core.utils import handle_http_errors
 from social_core.backends.oauth import BaseOAuth2
+
+from ..utils import get_site
 
 log = logging.getLogger(__name__)
 
@@ -33,8 +38,8 @@ DEFAULT_AUTH_PIPELINE = (
 class TpBackend(BaseOAuth2):
     name = 'sso_tp-oauth2'
     ID_KEY = 'username'
-    AUTHORIZATION_URL = '{}/oauth2/authorize'.format(settings.SSO_TP_URL)
-    ACCESS_TOKEN_URL = '{}/oauth2/access_token'.format(settings.SSO_TP_URL)
+    AUTHORIZATION_URL = '{}/oauth2/authorize'
+    ACCESS_TOKEN_URL = '{}/oauth2/access_token'
     USER_DATA_URL = '{url}/oauth2/access_token/{access_token}/'
     DEFAULT_SCOPE = []
     REDIRECT_STATE = False
@@ -47,6 +52,19 @@ class TpBackend(BaseOAuth2):
 
     PIPELINE = DEFAULT_AUTH_PIPELINE
     skip_email_verification = True
+
+    def __init__(self, *args, **kwargs):
+        super(TpBackend, self).__init__(*args, **kwargs)
+        self._current_site = get_site()
+        # в предположении, что домен lms представляет lms_prfeix.domain.ru, а sso - sso.domain.ru
+        base_domain = '.'.join(self._current_site.domain.split('.')[1:])
+        self._sso_url = '{}://sso.{}'.format(getattr(settings, 'PLATFORM_SCHEME', 'https'), base_domain)
+
+    def authorization_url(self):
+        return self.AUTHORIZATION_URL.format(self._sso_url)
+
+    def access_token_url(self):
+        return self.ACCESS_TOKEN_URL.format(self._sso_url)
 
     def _get_info_from_request(self, request, post_param_name):
         if not request or request.method != 'POST':
@@ -76,7 +94,10 @@ class TpBackend(BaseOAuth2):
             OAuth2ProviderConfig = None
 
         if OAuth2ProviderConfig is not None:
-            provider_config = OAuth2ProviderConfig.current(self.name)
+            site = self.strategy.request
+            provider_config = OAuth2ProviderConfig.objects.filter(provider_slug=self.name, site=self._current_site).order_by('-change_date').first()
+            if not provider_config:
+                raise Exception('Backend %s for domain %s not found' % (self.name, self._current_site.domain))
             if not provider_config.enabled:
                 raise Exception("Can't fetch setting of a disabled backend.")
             try:
@@ -125,7 +146,7 @@ class TpBackend(BaseOAuth2):
         if user_info:
             return json.loads(user_info)
         return self.get_json(
-            '{}/users/me'.format(settings.SSO_TP_URL),
+            '{}/users/me'.format(self._sso_url),
             params={'access_token': access_token},
             headers={'Authorization': 'Bearer {}'.format(access_token)},
         )
@@ -152,7 +173,7 @@ class TpBackend(BaseOAuth2):
     def check_user_active_status(self, user):
         component = 'plp' if getattr(self, 'IS_PLP', False) else 'edx'
         return self.get_json(
-            '{}/users/check-is-active/'.format(settings.SSO_TP_URL),
+            '{}/users/check-is-active/'.format(self._sso_url),
             data={'component': component, 'username': user.username},
             headers={'Authorization': 'Token {}'.format(settings.SSO_API_TOKEN)},
             method='POST',
