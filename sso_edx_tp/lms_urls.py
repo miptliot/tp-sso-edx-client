@@ -1,14 +1,10 @@
-from django.conf.urls import include, patterns, url
+from django.conf.urls import include, url
+from static_template_view.views import render_404, render_500
+from sso_edx_tp.views import logout
 
-# Custom error pages
-handler404 = 'static_template_view.views.render_404'
-handler500 = 'static_template_view.views.render_500'
-
-
-urlpatterns = patterns(
-    '',
-    url(r'^404$', handler404),
-    url(r'^500$', handler500),
+urlpatterns = [
+    url(r'^404$', render_404),
+    url(r'^500$', render_500),
     url(r'', include('lms.urls')),
-    url(r'^social-logout', 'sso_edx_tp.views.logout', name='social-logout'),
-)
+    url(r'^social-logout', logout, name='social-logout'),
+]

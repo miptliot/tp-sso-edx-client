@@ -57,8 +57,13 @@ PERMISSION_FORUM_ROLES = {
 def can_create_library(user):
     qs = CourseAccessRole.objects.filter(user_id=user.id,
                                          role__in=LIBRARY_CREATE_ROLES)
+    if callable(user.is_authenticated):
+        user_is_authenticated = user.is_authenticated()
+    else:
+        user_is_authenticated = user.is_authenticated
+
     is_library_creator = (
-        user.is_authenticated()
+        user_is_authenticated
         and user.is_active
         and (
             GlobalStaff().has_user(user)

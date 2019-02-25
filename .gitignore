@@ -5,3 +5,4 @@ db.sqlite3
 local_settings.py
 .idea
 tp_sso_edx_client.egg-info
+.DS_Store
