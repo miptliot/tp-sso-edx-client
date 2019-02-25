@@ -8,16 +8,17 @@ from django.http import HttpResponseBadRequest, HttpResponse
 from django.contrib.auth.models import User
 
 from openedx.core.djangoapps.user_api.models import UserPreference
-from student.views import create_account_with_params, reactivation_email_for_user
+from student.forms import AccountCreationForm
+from student.helpers import do_create_account
+from student.views import send_reactivation_email_for_user
 from student.models import UserProfile, CourseAccessRole, create_comments_service_user, CourseEnrollment
 from student.roles import (
     CourseInstructorRole, CourseStaffRole, GlobalStaff, OrgStaffRole,
     UserBasedRole, CourseCreatorRole, CourseBetaTesterRole, OrgInstructorRole,
     LibraryUserRole, OrgLibraryUserRole
 )
-from third_party_auth.pipeline import (
-    make_random_password, AuthEntryError
-)
+from third_party_auth.pipeline import AuthEntryError
+from openedx.core.djangoapps.user_api.accounts.utils import generate_password
 from opaque_keys.edx.keys import CourseKey
 from opaque_keys import InvalidKeyError
 from collections import OrderedDict
@@ -106,6 +107,7 @@ def set_roles_for_edx_users(user, permissions, strategy):
             if role_class is not None:
                 role_args = role_kwargs.values()
                 role_obj = role_class(*role_args)
+
                 if not role_obj.has_user(user):
                     role_obj.add_users(user)
                     if role_class is CourseBetaTesterRole and not CourseEnrollment.objects.\
@@ -182,7 +184,7 @@ def ensure_user_information(
         request = strategy.request
         data['terms_of_service'] = 'true'
         data['honor_code'] = 'true'
-        data['password'] = make_random_password()
+        data['password'] = generate_password()
         # force name creation if it is empty in sso-profile
         data['name'] = ' '.join([data.get('firstname', ''),
                                  data.get('lastname', '')]).strip() or data['username']
@@ -195,7 +197,10 @@ def ensure_user_information(
             user = User.objects.get(email=data['email'])
         except User.DoesNotExist:
             _provider = data.pop('provider')
-            user = create_account_with_params(request, data)
+
+            form = AccountCreationForm(data=data, tos_required=False)
+            (user, _, _) = do_create_account(form)
+
             data['provider'] = _provider
             user.first_name = data.get('firstname')
             user.last_name = data.get('lastname')
@@ -244,7 +249,7 @@ def ensure_user_information(
         if allow_inactive_user:
             pass
         elif social is not None:
-            reactivation_email_for_user(user)
+            send_reactivation_email_for_user(user)
             log.warning(
                 'User "%s" is using third_party_auth to login but has not yet activated their account. ',
                 user.username

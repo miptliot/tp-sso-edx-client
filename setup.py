@@ -8,4 +8,5 @@ setup(
     author='edX',
     url='https://github.com/miptliot/tp-sso-edx-client',
     packages=find_packages(exclude=['tests']),
+    include_package_data=True,
 )

@@ -1,5 +1,7 @@
 import logging
 
+from django.contrib.sites.models import Site
+
 from student.roles import (GlobalStaff, CourseStaffRole, CourseInstructorRole,
                            CourseCreatorRole)
 from student.models import CourseAccessRole
@@ -8,6 +10,7 @@ from django_comment_common.models import (
     FORUM_ROLE_STUDENT, Role, Permission
 )
 from opaque_keys.edx.keys import CourseKey
+from openedx.core.djangoapps.theming.helpers import get_current_request
 
 
 log = logging.getLogger(__name__)
@@ -54,8 +57,13 @@ PERMISSION_FORUM_ROLES = {
 def can_create_library(user):
     qs = CourseAccessRole.objects.filter(user_id=user.id,
                                          role__in=LIBRARY_CREATE_ROLES)
+    if callable(user.is_authenticated):
+        user_is_authenticated = user.is_authenticated()
+    else:
+        user_is_authenticated = user.is_authenticated
+
     is_library_creator = (
-        user.is_authenticated()
+        user_is_authenticated
         and user.is_active
         and (
             GlobalStaff().has_user(user)
@@ -87,3 +95,13 @@ def create_forum_roles_and_permissions_for_cours(course):
             if not r.permissions.filter(name=perm.name):
                 r.permissions.add(perm)
                 log.warning(u'Add permission {} for role {}.'.format(perm, r))
+
+
+def get_site():
+    request = get_current_request()
+    try:
+        return Site.objects._get_site_by_request(request)
+    except Site.DoesNotExist:
+        # cms fallback
+        return Site.objects.get_current()
+
