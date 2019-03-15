@@ -7,7 +7,7 @@ from third_party_auth.models import OAuth2ProviderConfig
 
 class Command(BaseCommand):
     def handle(self, *args, **options):
-        current_clients = {i.provider_slug: i for i in OAuth2ProviderConfig.objects.current_set()}
+        current_clients = {i.slug: i for i in OAuth2ProviderConfig.objects.current_set()}
         data = [
             (
                 'LMS',
@@ -40,7 +40,7 @@ class Command(BaseCommand):
     def get_obj_dict(self, name, slug, key, secret):
         return {
             'name': name,
-            'provider_slug': slug,
+            'slug': slug,
             'backend_name': slug,
             'enabled': True,
             'site': Site.objects.get_current(),
