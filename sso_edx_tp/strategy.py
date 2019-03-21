@@ -1,7 +1,7 @@
 # coding: utf-8
 """
 Немного измененный класс third_party_auth.strategy.ConfigurationModelStrategy
-таким образом, чтобы учитывать не только provider_slug, но и сайт
+таким образом, чтобы учитывать не только slug, но и сайт
 """
 
 from social_core.backends.oauth import OAuthAuth
@@ -33,7 +33,7 @@ class ConfigurationModelStrategy(DjangoStrategy):
         """
         site = get_site()
         if isinstance(backend, OAuthAuth):
-            provider_config = OAuth2ProviderConfig.objects.filter(provider_slug=backend.name, site=site).order_by('-change_date').first()
+            provider_config = OAuth2ProviderConfig.objects.filter(slug=backend.name, site=site).order_by('-change_date').first()
             if not (provider_config.enabled and provider_config.site == site):
                 raise Exception("Can't fetch setting of a disabled backend/provider.")
             try:
