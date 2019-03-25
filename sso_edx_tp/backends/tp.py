@@ -95,7 +95,7 @@ class TpBackend(BaseOAuth2):
 
         if OAuth2ProviderConfig is not None:
             site = self.strategy.request
-            provider_config = OAuth2ProviderConfig.objects.filter(slug=self.name, site=self._current_site).order_by('-change_date').first()
+            provider_config = OAuth2ProviderConfig.objects.filter(backend_name=self.name, site=self._current_site).order_by('-change_date').first()
             if not provider_config:
                 raise Exception('Backend %s for domain %s not found' % (self.name, self._current_site.domain))
             if not provider_config.enabled:

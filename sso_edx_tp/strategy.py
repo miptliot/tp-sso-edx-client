@@ -33,7 +33,7 @@ class ConfigurationModelStrategy(DjangoStrategy):
         """
         site = get_site()
         if isinstance(backend, OAuthAuth):
-            provider_config = OAuth2ProviderConfig.objects.filter(slug=backend.name, site=site).order_by('-change_date').first()
+            provider_config = OAuth2ProviderConfig.objects.filter(backend_name=backend.name, site=site).order_by('-change_date').first()
             if not (provider_config.enabled and provider_config.site == site):
                 raise Exception("Can't fetch setting of a disabled backend/provider.")
             try:
