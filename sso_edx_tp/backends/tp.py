@@ -9,6 +9,7 @@ from django.contrib.sites.models import Site
 from social_core.utils import handle_http_errors
 from social_core.backends.oauth import BaseOAuth2
 
+from ..models import SSORedirect
 from ..utils import get_site
 
 log = logging.getLogger(__name__)
@@ -56,12 +57,16 @@ class TpBackend(BaseOAuth2):
     def __init__(self, *args, **kwargs):
         super(TpBackend, self).__init__(*args, **kwargs)
         self._current_site = get_site()
-        if len(self._current_site.domain.split('.')) == 2:
-            base_domain = self._current_site.domain
+        sso_redirect = SSORedirect.objects.filter(site=self._current_site).first()
+        if sso_redirect:
+            self._sso_url = '{}://{}'.format(getattr(settings, 'PLATFORM_SCHEME', 'https'), sso_redirect.sso_domain)
         else:
-            # в предположении, что домен lms представляет lms_prfeix.domain.ru, а sso - sso.domain.ru
-            base_domain = '.'.join(self._current_site.domain.split('.')[1:])
-        self._sso_url = '{}://sso.{}'.format(getattr(settings, 'PLATFORM_SCHEME', 'https'), base_domain)
+            if len(self._current_site.domain.split('.')) == 2:
+                base_domain = self._current_site.domain
+            else:
+                # в предположении, что домен lms представляет lms_prfeix.domain.ru, а sso - sso.domain.ru
+                base_domain = '.'.join(self._current_site.domain.split('.')[1:])
+            self._sso_url = '{}://sso.{}'.format(getattr(settings, 'PLATFORM_SCHEME', 'https'), base_domain)
 
     def authorization_url(self):
         return self.AUTHORIZATION_URL.format(self._sso_url)
