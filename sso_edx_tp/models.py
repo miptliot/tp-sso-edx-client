@@ -3,14 +3,30 @@ import logging
 import requests
 
 from django.conf import settings
+from django.contrib.sites.models import Site, _simple_domain_name_validator
 from django.dispatch import receiver
+from django.db import models
 from django.db.models.signals import post_save
+from django.utils.translation import ugettext_lazy as _
 
 from xmodule.modulestore.django import SignalHandler
 from course_action_state.models import CourseRerunState
 
 
 log = logging.getLogger('SSO_signals')
+
+
+class SSORedirect(models.Model):
+    site = models.OneToOneField(Site, on_delete=models.CASCADE, verbose_name=_('Site'))
+    sso_domain = models.CharField(
+        verbose_name=_('SSO domain name'),
+        max_length=100,
+        validators=[_simple_domain_name_validator],
+    )
+    
+    class Meta:
+        verbose_name = _('SSO Redirect')
+        verbose_name_plural = _('SSO Redirects')
 
 
 @receiver(SignalHandler.course_published)
