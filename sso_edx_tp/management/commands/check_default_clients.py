@@ -1,3 +1,4 @@
+import json
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.sites.models import Site
@@ -46,4 +47,5 @@ class Command(BaseCommand):
             'site': Site.objects.get_current(),
             'key': key,
             'secret': secret,
+            'other_settings': json.dumps({'use_for_cms': name == 'CMS'}),
         }
