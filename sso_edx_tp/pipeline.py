@@ -235,7 +235,7 @@ def ensure_user_information(
             user_profile = UserProfile.objects.filter(user=user)[0]
 
         if user_profile:
-            user_profile.name = user.get_full_name()
+            user_profile.name = data.get('meta', {}).get('leader_id') or user.get_full_name()
             user_profile.goals = json.dumps(data.get('meta', {}))
             user_profile.save()
 
