@@ -13,7 +13,7 @@ from student.helpers import do_create_account
 from student.views import send_reactivation_email_for_user
 from student.models import UserProfile, CourseAccessRole, create_comments_service_user, CourseEnrollment
 from student.roles import (
-    CourseInstructorRole, CourseStaffRole, GlobalStaff, OrgStaffRole,
+    CourseInstructorRole, CourseStaffRole, GlobalStaff, OrgStaffRole, OrgInstructorRole,
     UserBasedRole, CourseCreatorRole, CourseBetaTesterRole, OrgInstructorRole,
     LibraryUserRole, OrgLibraryUserRole
 )
@@ -51,7 +51,7 @@ class UserRole(BaseUserRole):
             if role_id in (cls.TYPE_SUPERADMIN, cls.TYPE_GLOBAL_ADMIN):
                 return GlobalStaff, {}, True
             elif role_id == cls.TYPE_ORG_ADMIN:
-                return OrgStaffRole, OrderedDict([('org', role['obj_id'])]), False
+                return OrgInstructorRole, OrderedDict([('org', role['obj_id'])]), False
             elif role_id in (cls.TYPE_COURSERUN_AUTHOR, cls.TYPE_COURSE_AUTHOR):
                 course_key = CourseKey.from_string(role['obj_id'])
                 return CourseInstructorRole, OrderedDict([('course_id', course_key)]), False
