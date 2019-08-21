@@ -13,8 +13,8 @@ from student.helpers import do_create_account
 from student.views import send_reactivation_email_for_user
 from student.models import UserProfile, CourseAccessRole, create_comments_service_user, CourseEnrollment
 from student.roles import (
-    CourseInstructorRole, CourseStaffRole, GlobalStaff, OrgStaffRole,
-    UserBasedRole, CourseCreatorRole, CourseBetaTesterRole, OrgInstructorRole,
+    CourseInstructorRole, CourseStaffRole, GlobalStaff, OrgStaffRole, OrgInstructorRole,
+    UserBasedRole, CourseCreatorRole, CourseBetaTesterRole,
     LibraryUserRole, OrgLibraryUserRole
 )
 from third_party_auth.pipeline import AuthEntryError
@@ -51,7 +51,7 @@ class UserRole(BaseUserRole):
             if role_id in (cls.TYPE_SUPERADMIN, cls.TYPE_GLOBAL_ADMIN):
                 return GlobalStaff, {}, True
             elif role_id == cls.TYPE_ORG_ADMIN:
-                return OrgStaffRole, OrderedDict([('org', role['obj_id'])]), False
+                return OrgInstructorRole, OrderedDict([('org', role['obj_id'])]), False
             elif role_id in (cls.TYPE_COURSERUN_AUTHOR, cls.TYPE_COURSE_AUTHOR):
                 course_key = CourseKey.from_string(role['obj_id'])
                 return CourseInstructorRole, OrderedDict([('course_id', course_key)]), False
@@ -107,6 +107,7 @@ def set_roles_for_edx_users(user, permissions, strategy):
             if role_class is not None:
                 role_args = role_kwargs.values()
                 role_obj = role_class(*role_args)
+
                 if not role_obj.has_user(user):
                     role_obj.add_users(user)
                     if role_class is CourseBetaTesterRole and not CourseEnrollment.objects.\
