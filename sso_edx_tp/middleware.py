@@ -49,7 +49,7 @@ class SeamlessAuthorization(MiddlewareMixin):
 
         auth_process_urls = ('oauth2', 'auth', 'login_oauth_token', 'social-logout')
         api_urls = ('certificates', 'api', 'user_api', 'notifier_api', 'update_example_certificate',
-                    'update_certificate', 'request_certificate',)
+                    'update_certificate', 'request_certificate', 'course-shifts')
 
         is_auth = is_authenticated(request.user)
         if not is_auth and start_url not in auth_process_urls and \
