@@ -73,8 +73,10 @@ class SeamlessAuthorization(MiddlewareMixin):
                     in_exclude_path = True
                     break
 
-        auth_cookie = request.COOKIES.get(self.cookie_name, '0').lower()
-        auth_cookie_user = request.COOKIES.get('{}_user'.format(self.cookie_name))
+        cookie_name = getattr(settings, 'SSO_AUTH_COOKIE', self.cookie_name)
+
+        auth_cookie = request.COOKIES.get(cookie_name, '0').lower()
+        auth_cookie_user = request.COOKIES.get('{}_user'.format(cookie_name))
         auth_cookie = (auth_cookie in ('1', 'true', 'ok'))
         continue_url = reverse('{0}:complete'.format(NAMESPACE),
                                args=(backend,))
@@ -145,7 +147,7 @@ class PLPRedirection(MiddlewareMixin):
         if settings.DEBUG:
             debug_handle_local_urls = ('debug', settings.STATIC_URL, )
             handle_local_urls += debug_handle_local_urls
-        
+
         handle_local_urls += (settings.MEDIA_URL.strip('/'), )
 
         if request.path == "/dashboard/" or request.path == "/dashboard":
