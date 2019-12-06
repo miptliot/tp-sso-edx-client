@@ -232,17 +232,17 @@ def ensure_user_information(
             user.save()
             create_comments_service_user(user)
 
-        try:
-            user_profile = UserProfile.objects.get(user=user)
-        except UserProfile.DoesNotExist:
-            user_profile = None
-        except UserProfile.MultipleObjectsReturned:
-            user_profile = UserProfile.objects.filter(user=user)[0]
+    try:
+        user_profile = UserProfile.objects.get(user=user)
+    except UserProfile.DoesNotExist:
+        user_profile = None
+    except UserProfile.MultipleObjectsReturned:
+        user_profile = UserProfile.objects.filter(user=user)[0]
 
-        if user_profile:
-            user_profile.name = user.get_full_name()
-            user_profile.goals = json.dumps(data.get('meta', {}))
-            user_profile.save()
+    if user_profile:
+        user_profile.name = user.get_full_name()
+        user_profile.goals = json.dumps(data.get('meta', {}))
+        user_profile.save()
 
     user = user or response.get('user')
     if user and not user.is_active:
