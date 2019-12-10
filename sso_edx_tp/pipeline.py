@@ -49,7 +49,7 @@ class UserRole(BaseUserRole):
         try:
             if role_id in (cls.TYPE_SUPERADMIN, cls.TYPE_GLOBAL_ADMIN):
                 return GlobalStaff, {}, True
-            elif role_id == cls.TYPE_ORG_ADMIN:
+            elif role_id in (cls.TYPE_ORG_ADMIN, cls.TYPE_ORG_CONTENT_MANAGER):
                 return OrgStaffRole, OrderedDict([('org', role['obj_id'])]), False
             elif role_id in (cls.TYPE_COURSERUN_AUTHOR, cls.TYPE_COURSE_AUTHOR):
                 course_key = CourseKey.from_string(role['obj_id'])
