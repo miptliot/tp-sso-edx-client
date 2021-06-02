@@ -47,7 +47,7 @@ class SeamlessAuthorization(MiddlewareMixin):
         backend = settings.SSO_TP_BACKEND_NAME
         current_url = request.get_full_path()
 
-        exluded_paths = ['/handler_noauth', '/xqueue', '/certificates']
+        exluded_paths = ['/handler_noauth', '/xqueue', '/certificates', '/admin']
         for exluded_path in exluded_paths:
             if exluded_path in current_url:
                 return None
