@@ -44,6 +44,7 @@ class SeamlessAuthorization(MiddlewareMixin):
         """
         Check multidomain cookie and if user is authenticated on sso, login it on edx
         """
+        return
         backend = settings.SSO_TP_BACKEND_NAME
         current_url = request.get_full_path()
 
