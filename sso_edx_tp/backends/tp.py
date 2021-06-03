@@ -43,6 +43,7 @@ class TpBackend(BaseOAuth2):
     EXTRA_DATA = [
         ('refresh_token', 'refresh_token', True),
         ('expires_in', 'expires'),
+        ('gtm_id', 'gtm_id', True),
     ]
 
     PIPELINE = DEFAULT_AUTH_PIPELINE
