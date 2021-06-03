@@ -44,11 +44,10 @@ class SeamlessAuthorization(MiddlewareMixin):
         """
         Check multidomain cookie and if user is authenticated on sso, login it on edx
         """
-        return
         backend = settings.SSO_TP_BACKEND_NAME
         current_url = request.get_full_path()
 
-        exluded_paths = ['/handler_noauth', '/xqueue', '/certificates', '/admin']
+        exluded_paths = ['/handler_noauth', '/xqueue', '/certificates']
         for exluded_path in exluded_paths:
             if exluded_path in current_url:
                 return None
