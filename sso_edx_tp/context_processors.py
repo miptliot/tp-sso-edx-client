@@ -6,7 +6,7 @@ def edx_context(request):
     if request.user.is_authenticated():
         items = request.user.social_auth.filter(provider__in=('sso_tp-oauth2', 'sso_tp_cms-oauth2'))
         for item in items:
-            if isinstance(item.extra_data, dict) and isinstance(item.extra_data.get('gtm_id'), str) and item.extra_data.get('gtm_id'):
+            if isinstance(item.extra_data, dict) and isinstance(item.extra_data.get('gtm_id'), (str, unicode)) and item.extra_data.get('gtm_id'):
                 gtm_id = item.extra_data.get('gtm_id')
                 break
     return {
